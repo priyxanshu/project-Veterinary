@@ -1,0 +1,1 @@
+../../mpsvc-prototype.jsx
