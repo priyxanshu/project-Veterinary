@@ -806,7 +806,7 @@ export default function MPSVCPrototype() {
           <div
             className="login-option-card login-option-card-staff"
             role="button" tabIndex={0}
-            onClick={() => { window.location.href = "/back-office.html"; }}
+            onClick={() => { window.location.href = import.meta.env.BASE_URL + "back-office.html"; }}
           >
             <div className="login-option-icon"><Building2 size={22} /></div>
             <div className="login-option-body">
