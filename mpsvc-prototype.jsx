@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Phone, User, Mail, Upload, CheckCircle2, Circle, Clock, XCircle,
+  User, Mail, Upload, CheckCircle2, Circle, Clock, XCircle,
   FileText, CreditCard, Landmark, Truck, Bell, LogOut, ChevronRight,
   ChevronLeft, Download, QrCode, ShieldCheck, AlertTriangle, Building2,
   GraduationCap, Camera, PenTool, Home, ArrowLeft, RefreshCw, Send,
@@ -22,6 +22,24 @@ const SERVICES = {
   "transfer-in":  { label: "Transfer-In to Madhya Pradesh",          code: "TRIN",  loginType: "mobile", fee: 1000 },
   renewal:        { label: "Renewal Registration",                  code: "REN",   loginType: "regno", fee: 1000 },
   "transfer-out": { label: "Transfer-Out of Madhya Pradesh",         code: "TROUT", loginType: "regno", fee: 1000 },
+  "add-qualification": { label: "Addition of Qualification",         code: "AOQ",   loginType: "regno", fee: 500 },
+};
+
+// The entry flow branches on two questions before any login happens:
+//   1. Is the applicant new to MPSVC, or already on the Council's rolls?
+//   2. (new applicants only) Is their veterinary college inside Madhya Pradesh?
+// A Provisional Registration can only be granted to a student of a recognised MP
+// college (see PROVISIONAL_TNC), so an applicant from an out-of-state college skips
+// straight to New Registration. Transfer-In is offered in both cases — a vet already
+// registered with another State Council may hold a degree from either.
+const SERVICES_BY_COLLEGE = {
+  mp:     ["provisional", "transfer-in"],
+  outside: ["new", "transfer-in"],
+};
+// Services unlocked by each kind of existing-user credential.
+const SERVICES_BY_CREDENTIAL = {
+  provisional: ["new"],
+  regno:       ["renewal", "transfer-out", "add-qualification"],
 };
 
 // Official Terms & Conditions shown to the applicant before they can submit a
@@ -264,6 +282,7 @@ const EMPTY_FORM = {
   idProofType: "", idProofNumber: "",
   prevCouncilName: "", prevRegNo: "", prevRegDate: "", transferReason: "",
   existingRegNo: "", existingRegValidTill: "", renewalPeriod: "",
+  addlQualDegree: "", addlQualSpecialization: "", addlQualUniversity: "", addlQualCollege: "", addlQualYear: "",
 
   // Provisional Registration — official MPSVC field set (see PROVISIONAL_TNC)
   firstName: "", middleName: "", lastName: "", fatherName: "",
@@ -338,8 +357,12 @@ function getChecklist(serviceType) {
     { key: "photo", label: "Passport-size Photograph", format: "photo", hint: PHOTO_HINT },
     { key: "signature", label: "Signature Specimen", format: "photo" },
   ];
-  if (serviceType === "renewal" || serviceType === "transfer-out") {
+  if (serviceType === "renewal" || serviceType === "transfer-out" || serviceType === "add-qualification") {
     base.push({ key: "priorReg", label: "Prior Registration Certificate", format: "pdf" });
+  }
+  if (serviceType === "add-qualification") {
+    base.push({ key: "addlQualCert", label: "Additional Qualification Degree Certificate", format: "pdf" });
+    base.push({ key: "addlQualMarksheet", label: "Additional Qualification Marksheet", format: "pdf" });
   }
   return base;
 }
@@ -446,7 +469,7 @@ function GovHeader({ loggedIn, profile, notifications, notifOpen, setNotifOpen, 
 }
 
 function WizardRibbon({ step }) {
-  const steps = ["Service", "Application Form", "Documents", "Payment", "Confirmation"];
+  const steps = ["Service", "Application Form", "Documents", "Review", "Payment", "Confirmation"];
   return (
     <div className="wizard-ribbon">
       {steps.map((s, i) => {
@@ -557,35 +580,43 @@ export default function MPSVCPrototype() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
-  // login state
-  const [loginMethod, setLoginMethod] = useState(null);
-  // which tab is showing on the User Login screen — purely a UI toggle, defaults to
-  // Mobile Number; loginMethod (above) only gets set once the user actually submits
-  const [activeLoginTab, setActiveLoginTab] = useState("mobile");
-  const [mobile, setMobile] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpError, setOtpError] = useState("");
-  const [existingNumberDemo, setExistingNumberDemo] = useState(false);
-  const [signup, setSignup] = useState({ name: "", email: "" });
-  const [signupEmailOtp, setSignupEmailOtp] = useState("");
-  const [signupEmailOtpError, setSignupEmailOtpError] = useState("");
+  // Entry flow. applicantType is "new" (never registered with MPSVC) or "existing"
+  // (already holds a Provisional Certificate or a Registration Number). Only an
+  // existing user logs in — they have a credential to be identified by. A new
+  // applicant answers one question, which college they graduated from, because that
+  // alone decides whether Provisional Registration is open to them, and goes straight
+  // to the application form.
+  const [applicantType, setApplicantType] = useState(null);
+  const [collegeState, setCollegeState] = useState("");     // state the college sits in
+  const [collegeChoice, setCollegeChoice] = useState("");   // MP college picked from the list
+  const [collegeOtherName, setCollegeOtherName] = useState("");   // free-text college, non-MP
+  const [collegeOtherUniversity, setCollegeOtherUniversity] = useState("");
+  const [collegeError, setCollegeError] = useState("");
+  // "mp" | "outside" — resolved from the answers above, keys into SERVICES_BY_COLLEGE
+  const [collegeOrigin, setCollegeOrigin] = useState(null);
 
-  // forgot mobile number — verify via registered email OTP, then set a new mobile number
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotEmailError, setForgotEmailError] = useState("");
-  const [forgotOtp, setForgotOtp] = useState("");
-  const [forgotOtpError, setForgotOtpError] = useState("");
-  const [newMobile, setNewMobile] = useState("");
-  const [newMobileError, setNewMobileError] = useState("");
+  // Existing-user login — which credential they identified themselves with. Keys into
+  // SERVICES_BY_CREDENTIAL: a Provisional Certificate Number only unlocks New
+  // Registration, a Registration Number unlocks the post-registration services.
+  const [existingLoginTab, setExistingLoginTab] = useState("provisional");
+  const [credentialType, setCredentialType] = useState(null);
+  const [provCertInput, setProvCertInput] = useState("");
+  const [provCertOtp, setProvCertOtp] = useState("");
 
-  // contact admin — fallback when both mobile and email are lost
+  // contact admin — fallback when the citizen can't reach their registered mobile/email
   const [contactForm, setContactForm] = useState({ name: "", regNo: "", altContact: "", message: "" });
   const [contactFormError, setContactFormError] = useState("");
   const [contactTicketId, setContactTicketId] = useState("");
 
   const [regNoInput, setRegNoInput] = useState("");
   const [regnoOtp, setRegnoOtp] = useState("");
+
+  // forgot registration number — look it up by name, email, and mobile number
+  const [forgotRegnoName, setForgotRegnoName] = useState("");
+  const [forgotRegnoEmail, setForgotRegnoEmail] = useState("");
+  const [forgotRegnoMobile, setForgotRegnoMobile] = useState("");
+  const [forgotRegnoError, setForgotRegnoError] = useState("");
+  const [forgotRegnoResult, setForgotRegnoResult] = useState(null);
 
   const [profile, setProfile] = useState({ fullName: "", email: "", mobile: "" });
 
@@ -647,13 +678,13 @@ export default function MPSVCPrototype() {
 
   function resetAll() {
     setScreen("login"); setLoggedIn(false); setNotifOpen(false); setNotifications([]);
-    setLoginMethod(null); setActiveLoginTab("mobile"); setMobile(""); setOtp(""); setOtpSent(false); setOtpError("");
-    setExistingNumberDemo(false); setSignup({ name: "", email: "" });
-    setSignupEmailOtp(""); setSignupEmailOtpError("");
-    setForgotEmail(""); setForgotEmailError(""); setForgotOtp(""); setForgotOtpError("");
-    setNewMobile(""); setNewMobileError("");
+    setApplicantType(null); setCollegeState(""); setCollegeChoice(""); setCollegeOtherName("");
+    setCollegeOtherUniversity(""); setCollegeError(""); setCollegeOrigin(null);
+    setExistingLoginTab("provisional"); setCredentialType(null); setProvCertInput(""); setProvCertOtp("");
     setContactForm({ name: "", regNo: "", altContact: "", message: "" }); setContactFormError(""); setContactTicketId("");
     setRegNoInput(""); setRegnoOtp("");
+    setForgotRegnoName(""); setForgotRegnoEmail(""); setForgotRegnoMobile("");
+    setForgotRegnoError(""); setForgotRegnoResult(null);
     setProfile({ fullName: "", email: "", mobile: "" });
     setProvisionalRecord(null);
     setExistingRegRecord(null);
@@ -668,6 +699,35 @@ export default function MPSVCPrototype() {
   }
 
   function goDashboard() { setScreen("dashboard"); }
+
+  // The single source of truth for "which services is this citizen allowed to apply
+  // for" — driven by how they entered the portal. An existing user's credential decides
+  // it (Registration Number vs. Provisional Certificate Number); a new applicant's
+  // college decides it (inside Madhya Pradesh vs. outside). See SERVICES_BY_* above.
+  function availableServices() {
+    if (credentialType) return SERVICES_BY_CREDENTIAL[credentialType];
+    return SERVICES_BY_COLLEGE[collegeOrigin] || SERVICES_BY_COLLEGE.outside;
+  }
+
+  // A first-time applicant never logs in, so the portal only learns who they are from
+  // the application itself. Called on submission, this fills the profile behind the
+  // header and the dashboard greeting from what they entered on the form. An existing
+  // user's profile already came from their record at login, so it is left alone.
+  // Leaving the application form goes back to wherever the service was chosen — the
+  // college screen for a first-time applicant (so they can change college as well as
+  // service), the service menu for a logged-in existing user.
+  function backFromForm() {
+    setScreen(credentialType ? "service-select" : "college-check");
+  }
+
+  function syncProfileFromForm() {
+    if (existingRegRecord || provisionalRecord) return;
+    setProfile(p => ({
+      fullName: applicantDisplayName() || p.fullName,
+      email: formData.email || p.email,
+      mobile: formData.mobile1 || p.mobile,
+    }));
+  }
 
   // Provisional Registration and New Registration both collect First/Middle/Last Name
   // separately rather than a single Full Name field — this reassembles a display name
@@ -816,15 +876,45 @@ export default function MPSVCPrototype() {
             <ChevronRight size={18} className="login-option-arrow" />
           </div>
 
+          <div className="login-options-label">Are you new to MPSVC, or already registered?</div>
+
           <div
             className="login-option-card"
             role="button" tabIndex={0}
-            onClick={() => { setScreen("user-login-method"); }}
+            onClick={() => {
+              setApplicantType("new");
+              setCredentialType(null);
+              setCollegeError("");
+              setServiceType(null);
+              setScreen("college-check");
+            }}
           >
-            <div className="login-option-icon"><User size={22} /></div>
+            <div className="login-option-icon"><UserPlus size={22} /></div>
             <div className="login-option-body">
-              <div className="login-option-title">Council Registration</div>
-              <div className="login-option-desc">Apply for registration, track your application, and manage your certificate.</div>
+              <div className="login-option-title">I am a New Applicant</div>
+              <div className="login-option-desc">
+                I have never registered with the Council.
+              </div>
+            </div>
+            <ChevronRight size={18} className="login-option-arrow" />
+          </div>
+
+          <div
+            className="login-option-card login-option-card-regno"
+            role="button" tabIndex={0}
+            onClick={() => {
+              setApplicantType("existing");
+              setCredentialType(null);
+              setExistingLoginTab("provisional");
+              setScreen("existing-login");
+            }}
+          >
+            <div className="login-option-icon"><Award size={22} /></div>
+            <div className="login-option-body">
+              <div className="login-option-title">I am Already Registered</div>
+              <div className="login-option-desc">
+                I hold an MPSVC Provisional Certificate Number or Registration Number.
+              </div>
             </div>
             <ChevronRight size={18} className="login-option-arrow" />
           </div>
@@ -833,75 +923,202 @@ export default function MPSVCPrototype() {
     );
   }
 
-  function ScreenUserLoginMethod() {
+  /* ---- New applicant, step 1: which college did they graduate from? ----
+     This is asked before login because it is the only thing that decides whether
+     Provisional Registration is available — it is reserved for students of recognised
+     Madhya Pradesh colleges (Schedule II). An out-of-state graduate goes straight to
+     New Registration instead. Either way Transfer-In stays on the menu. */
+
+  function ScreenCollegeCheck() {
+    const isMP = collegeState === "Madhya Pradesh";
+    // As soon as the state is known so is the service menu, so the citizen picks the
+    // service here rather than on a separate screen after login.
+    const choices = collegeState ? SERVICES_BY_COLLEGE[isMP ? "mp" : "outside"] : null;
+
+    function chooseService(key) {
+      if (isMP && !collegeChoice) { setCollegeError("Select your college."); return; }
+      if (!isMP && !collegeOtherName.trim()) { setCollegeError("Enter the name of your college."); return; }
+
+      const origin = isMP ? "mp" : "outside";
+      const college = isMP ? collegeChoice : collegeOtherName.trim();
+      const university = isMP ? "Nanaji Deshmukh Veterinary Science University, Jabalpur" : collegeOtherUniversity.trim();
+      setCollegeOrigin(origin);
+      setCollegeError("");
+      setServiceType(key);
+      // No login stands between the citizen and the form — a first-time applicant has
+      // no credential to log in with, and the application itself collects their name,
+      // mobile number and email. The profile behind the header is filled in from those
+      // answers when the application is submitted (see syncProfileFromForm).
+      setLoggedIn(true);
+      // Carry the answer into every form that asks for the same thing, so the citizen
+      // never re-types it — Provisional uses provCollegeName, New Registration /
+      // Transfer-In use the B.V.Sc row of the Qualification table, and the
+      // Renewal-style form uses collegeName/university.
+      setFormData(f => ({
+        ...f,
+        collegeName: college, university: university || f.university,
+        provCollegeName: isMP ? college : f.provCollegeName,
+        qualBvscCollege: college, qualBvscUniversity: university || f.qualBvscUniversity,
+      }));
+      setScreen("app-form");
+    }
+
     return (
       <div className="page-narrow">
         <BackLink onClick={() => setScreen("login")} />
         <div className="card">
-          <div className="card-header">User Login</div>
+          <div className="card-header">Your Veterinary College</div>
+          <div className="card-body">
+            <p className="muted-text">
+              Tell us where you completed your veterinary degree. Provisional Registration is granted only to
+              students of a recognised Madhya Pradesh college, so this decides which services you can apply for.
+            </p>
+
+            <Field label="State of your College / University" required>
+              <select className="form-input" value={collegeState}
+                onChange={e => { setCollegeState(e.target.value); setCollegeChoice(""); setCollegeError(""); }}>
+                <option value="">Select</option>
+                {INDIAN_STATES.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </Field>
+
+            {isMP ? (
+              <Field label="College Name" required>
+                <select className="form-input" value={collegeChoice}
+                  onChange={e => { setCollegeChoice(e.target.value); setCollegeError(""); }}>
+                  <option value="">Select</option>
+                  {MP_VET_COLLEGES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </Field>
+            ) : collegeState ? (
+              <>
+                <Field label="College Name" required>
+                  <input className="form-input" placeholder="e.g. College of Veterinary Science, Nagpur"
+                    value={collegeOtherName}
+                    onChange={e => { setCollegeOtherName(e.target.value); setCollegeError(""); }} />
+                </Field>
+                <Field label="University Name" hint="The university your college is affiliated to.">
+                  <input className="form-input" placeholder="e.g. Maharashtra Animal & Fishery Sciences University"
+                    value={collegeOtherUniversity} onChange={e => setCollegeOtherUniversity(e.target.value)} />
+                </Field>
+              </>
+            ) : null}
+
+            {choices && (
+              <>
+                <div className="section-title">
+                  How would you like to proceed?
+                  <span className="section-title-tag">{isMP ? "Madhya Pradesh College" : "College outside Madhya Pradesh"}</span>
+                </div>
+                <p className="muted-text small-muted">
+                  {isMP
+                    ? "As a Madhya Pradesh graduate you may apply for Provisional Registration first, or transfer in an existing registration from another State Council."
+                    : "Provisional Registration is reserved for Madhya Pradesh college students, so you can apply directly for New Registration, or transfer in an existing registration from another State Council."}
+                </p>
+                <div className="service-grid">
+                  {choices.map(key => {
+                    const Icon = SERVICE_ICONS[key] || GraduationCap;
+                    return (
+                      <div className="service-card" role="button" tabIndex={0} key={key}
+                        onClick={() => chooseService(key)}>
+                        <Icon size={20} />
+                        <div className="service-card-label">
+                          {SERVICES[key].label}
+                          <div className="service-card-sub">
+                            {key === "transfer-in"
+                              ? "I already hold a registration with another State Veterinary Council."
+                              : key === "provisional"
+                                ? "I have completed my course and need a provisional certificate."
+                                : "I am registering with MPSVC for the first time."}
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="service-card-arrow" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {collegeError && <div className="form-error">{collegeError}</div>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ---- Already registered: identify by Provisional Certificate Number or by
+     Registration Number. The credential is not just a way in — it decides what the
+     citizen can do next (see SERVICES_BY_CREDENTIAL). Someone who only ever completed
+     Provisional Registration can look at that certificate's history and go on to apply
+     for New Registration; someone holding a full Registration Number is past that and
+     gets the post-registration services instead. ---- */
+
+  function ScreenExistingLogin() {
+    const onProv = existingLoginTab === "provisional";
+    return (
+      <div className="page-narrow">
+        <BackLink onClick={() => setScreen("login")} />
+        <div className="card">
+          <div className="card-header">Existing User Login</div>
           <div className="card-body">
             <div className="login-method-toggle">
               <button
                 type="button"
-                className={`login-method-tab ${activeLoginTab === "mobile" ? "login-method-tab-active" : ""}`}
-                onClick={() => setActiveLoginTab("mobile")}
+                className={`login-method-tab ${onProv ? "login-method-tab-active" : ""}`}
+                onClick={() => setExistingLoginTab("provisional")}
               >
-                <Phone size={14} /> Mobile Number
+                <GraduationCap size={14} /> Provisional Certificate No.
               </button>
               <button
                 type="button"
-                className={`login-method-tab ${activeLoginTab === "regno" ? "login-method-tab-active" : ""}`}
-                onClick={() => setActiveLoginTab("regno")}
+                className={`login-method-tab ${!onProv ? "login-method-tab-active" : ""}`}
+                onClick={() => setExistingLoginTab("regno")}
               >
                 <Award size={14} /> Registration Number
               </button>
             </div>
 
             <div className="login-info-panel">
-              {activeLoginTab === "mobile" ? (
+              {onProv ? (
                 <div className="login-info-block">
-                  <div className="login-info-label"><Phone size={13} /> Mobile Number</div>
+                  <div className="login-info-label"><GraduationCap size={13} /> Provisional Certificate Number</div>
                   <div className="login-info-chips">
-                    <span className="login-info-chip">Provisional Certificate</span>
                     <span className="login-info-chip">New Registration</span>
-                    <span className="login-info-chip">Transfer-In to M.P.</span>
+                    <span className="login-info-chip">Provisional Certificate History</span>
                   </div>
-                  <p className="login-info-note">You can view the details or apply for these services using your Mobile Number.</p>
+                  <p className="login-info-note">
+                    Your Provisional Registration is already on file. From here you can view that certificate and its
+                    history, and apply for New Registration.
+                  </p>
                 </div>
               ) : (
                 <div className="login-info-block">
                   <div className="login-info-label login-info-label-regno"><Award size={13} /> Registration Number</div>
                   <div className="login-info-chips">
-                    <span className="login-info-chip login-info-chip-regno">Renewal Registration</span>
-                    <span className="login-info-chip login-info-chip-regno">Transfer Out of M.P.</span>
-                    <span className="login-info-chip login-info-chip-regno">Addition of Qualification</span>
+                    {SERVICES_BY_CREDENTIAL.regno.map(k => (
+                      <span key={k} className="login-info-chip login-info-chip-regno">{SERVICES[k].label}</span>
+                    ))}
                   </div>
-                  <p className="login-info-note">You can view the details or apply for these services using your Registration Number.</p>
+                  <p className="login-info-note">
+                    You already hold a full MPSVC registration. You can view the details or apply for these services
+                    using your Registration Number.
+                  </p>
                 </div>
               )}
             </div>
 
-            {activeLoginTab === "mobile" ? (
+            {onProv ? (
               <>
-                <Field label="Mobile Number" required hint="10-digit mobile number registered with you.">
-                  <input className="form-input" type="tel" maxLength={10} placeholder="9876543210"
-                    value={mobile} onChange={e => setMobile(e.target.value.replace(/\D/g, ""))} />
+                <Field label="Provisional Certificate Number" required hint="An OTP will be sent to the mobile number registered against this certificate.">
+                  <input className="form-input" placeholder="MPSVC/PROV/2025/00187" value={provCertInput}
+                    onChange={e => setProvCertInput(e.target.value)} />
                 </Field>
-                <label className="checkbox-row">
-                  <input type="checkbox" checked={existingNumberDemo} onChange={e => setExistingNumberDemo(e.target.checked)} />
-                  <span>Demo: treat this as an already-registered number (skip signup)</span>
-                </label>
-                <button className="btn btn-primary btn-block"
-                  onClick={() => { setLoginMethod("mobile"); setOtpSent(true); setOtpError(""); setScreen("mobile-otp"); }}>
-                  Send OTP
-                </button>
-
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", marginTop: 10, flexWrap: "wrap", gap: 6 }}>
-                  <button className="btn btn-link" style={{ padding: 0 }}
-                    onClick={() => { setForgotEmail(""); setForgotEmailError(""); setScreen("forgot-mobile-email"); }}>
-                    Forgot Mobile Number?
-                  </button>
-                </div>
+                <p className="muted-text small-muted">Demo: this screen accepts any entry and loads a sample provisional record — {PROVISIONAL_RECORD.fullName} ({PROVISIONAL_RECORD.certNo}).</p>
+                <button className="btn btn-primary btn-block" onClick={() => {
+                  setProvCertOtp("");
+                  setScreen("prov-cert-otp");
+                }}>Send OTP</button>
               </>
             ) : (
               <>
@@ -911,12 +1128,33 @@ export default function MPSVCPrototype() {
                 </Field>
                 <p className="muted-text small-muted">Demo: this screen accepts any entry and loads a sample registration record — {MOCK_RECORD.fullName} ({MOCK_RECORD.regNo}).</p>
                 <button className="btn btn-primary btn-block" onClick={() => {
-                  setLoginMethod("regno");
                   setRegnoOtp("");
                   setScreen("regno-otp");
                 }}>Send OTP</button>
+
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", marginTop: 10, flexWrap: "wrap", gap: 6 }}>
+                  <button className="btn btn-link" style={{ padding: 0 }}
+                    onClick={() => {
+                      setForgotRegnoName(""); setForgotRegnoEmail(""); setForgotRegnoMobile("");
+                      setForgotRegnoError(""); setForgotRegnoResult(null);
+                      setScreen("forgot-regno");
+                    }}>
+                    Forgot Registration Number?
+                  </button>
+                </div>
               </>
             )}
+
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 6 }}>
+              <button className="btn btn-link" style={{ padding: 0 }}
+                onClick={() => {
+                  setContactForm({ name: "", regNo: "", altContact: "", message: "" });
+                  setContactFormError(""); setContactTicketId("");
+                  setScreen("contact-admin");
+                }}>
+                Can't access the registered mobile number? Contact Admin
+              </button>
+            </div>
           </div>
         </div>
 
@@ -926,7 +1164,7 @@ export default function MPSVCPrototype() {
           onClick={() => {
             setProvisionalRecord(PROVISIONAL_RECORD);
             setProfile({ fullName: PROVISIONAL_RECORD.fullName, email: PROVISIONAL_RECORD.email, mobile: PROVISIONAL_RECORD.mobile });
-            setLoginMethod("mobile");
+            setCredentialType("provisional");
 
             // This demo citizen has already gone on to apply for New Registration and
             // has received its digital certificate — physical dispatch is left pending
@@ -974,7 +1212,7 @@ export default function MPSVCPrototype() {
           <div className="demo-shortcut-icon"><Sparkles size={15} /></div>
           <div className="demo-shortcut-body">
             <div className="demo-shortcut-label">Prototype Shortcut</div>
-            <div className="demo-shortcut-title">Sign in as an applicant who already holds Provisional Registration</div>
+            <div className="demo-shortcut-title">Sign in as an applicant who has already gone on from Provisional to New Registration</div>
           </div>
           <ChevronRight size={16} color="var(--mp-amber-text)" />
         </button>
@@ -982,10 +1220,61 @@ export default function MPSVCPrototype() {
     );
   }
 
+  // Provisional Certificate Number login — lands on a dashboard holding nothing but the
+  // provisional certificate and its history, with New Registration as the next step.
+  function ScreenProvCertOtp() {
+    return (
+      <div className="page-narrow">
+        <BackLink onClick={() => setScreen("existing-login")} />
+        <div className="card">
+          <div className="card-header">Verify OTP</div>
+          <div className="card-body">
+            <p className="muted-text">
+              An OTP has been sent to the mobile number registered against <strong>{provCertInput || PROVISIONAL_RECORD.certNo}</strong>.
+              (Demo — no validation, any entry will be accepted)
+            </p>
+            <Field label="Enter OTP" required>
+              <input className="form-input" maxLength={6} placeholder="6-digit OTP" value={provCertOtp}
+                onChange={e => setProvCertOtp(e.target.value.replace(/\D/g, ""))} />
+            </Field>
+            <button className="btn btn-primary btn-block" onClick={() => {
+              setProvisionalRecord(PROVISIONAL_RECORD);
+              setProfile({ fullName: PROVISIONAL_RECORD.fullName, email: PROVISIONAL_RECORD.email, mobile: PROVISIONAL_RECORD.mobile });
+              setCredentialType("provisional");
+                // Seed the details the Council already holds against this provisional
+              // certificate so the New Registration form opens pre-filled.
+              setFormData(f => ({
+                ...f,
+                firstName: PROVISIONAL_RECORD.firstName, middleName: PROVISIONAL_RECORD.middleName,
+                lastName: PROVISIONAL_RECORD.lastName, fatherName: PROVISIONAL_RECORD.fatherName,
+                dob: PROVISIONAL_RECORD.dob, gender: PROVISIONAL_RECORD.gender,
+                resAddress: PROVISIONAL_RECORD.resAddress, resAreaType: PROVISIONAL_RECORD.resAreaType,
+                resPostOffice: PROVISIONAL_RECORD.resPostOffice, resState: PROVISIONAL_RECORD.resState,
+                resDistrict: PROVISIONAL_RECORD.resDistrict, resPincode: PROVISIONAL_RECORD.resPincode,
+                resCity: PROVISIONAL_RECORD.resCity, resWard: PROVISIONAL_RECORD.resWard,
+                mobile1: PROVISIONAL_RECORD.mobile1, mobile2: PROVISIONAL_RECORD.mobile2,
+                email: PROVISIONAL_RECORD.email,
+                provUniversityName: PROVISIONAL_RECORD.provUniversityName,
+                provCollegeName: PROVISIONAL_RECORD.provCollegeName,
+                provPassingYear: PROVISIONAL_RECORD.provPassingYear,
+                qualBvscUniversity: PROVISIONAL_RECORD.provUniversityName,
+                qualBvscCollege: PROVISIONAL_RECORD.provCollegeName,
+                qualBvscYear: PROVISIONAL_RECORD.provPassingYear,
+              }));
+              setLoggedIn(true);
+              setScreen("dashboard");
+            }}>Verify OTP</button>
+            <button className="btn btn-link" onClick={() => setProvCertOtp("")}>Resend OTP</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function ScreenRegnoOtp() {
     return (
       <div className="page-narrow">
-        <BackLink onClick={() => setScreen("user-login-method")} />
+        <BackLink onClick={() => setScreen("existing-login")} />
         <div className="card">
           <div className="card-header">Verify OTP</div>
           <div className="card-body">
@@ -1000,6 +1289,7 @@ export default function MPSVCPrototype() {
             <button className="btn btn-primary btn-block" onClick={() => {
               setProfile({ fullName: MOCK_RECORD.fullName, email: MOCK_RECORD.email, mobile: MOCK_RECORD.mobile });
               setExistingRegRecord(MOCK_RECORD);
+              setCredentialType("regno");
               setFormData(f => ({
                 ...f,
                 fullName: MOCK_RECORD.fullName, collegeName: MOCK_RECORD.collegeName,
@@ -1018,190 +1308,74 @@ export default function MPSVCPrototype() {
     );
   }
 
-  function ScreenMobileOtp() {
+  /* ---- Forgot Registration Number: look it up by name, email, and mobile number ---- */
+
+  function ScreenForgotRegno() {
     return (
       <div className="page-narrow">
-        <BackLink onClick={() => setScreen("user-login-method")} />
+        <BackLink onClick={() => setScreen("existing-login")} />
         <div className="card">
-          <div className="card-header">Verify OTP</div>
-          <div className="card-body">
-            <p className="muted-text">An OTP has been sent to <strong>+91 {mobile}</strong>. (Demo — any 6-digit code will be accepted)</p>
-            <Field label="Enter OTP" required>
-              <input className="form-input" maxLength={6} placeholder="6-digit OTP" value={otp}
-                onChange={e => setOtp(e.target.value.replace(/\D/g, ""))} />
-            </Field>
-            {otpError && <div className="form-error">{otpError}</div>}
-            <button className="btn btn-primary btn-block" onClick={() => {
-              if (existingNumberDemo) {
-                setProfile({ fullName: "Dr. Priya Verma", email: "priya.verma@example.com", mobile });
-                setLoggedIn(true);
-                setScreen("service-select-mobile");
-              } else {
-                setScreen("mobile-signup");
-              }
-            }}>Verify OTP</button>
-            <button className="btn btn-link" onClick={() => setOtpError("")}>Resend OTP</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function ScreenMobileSignup() {
-    return (
-      <div className="page-narrow">
-        <div className="card">
-          <div className="card-header">Create Your Profile</div>
-          <div className="card-body">
-            <p className="muted-text">This is a new mobile number. Please share a few details to continue.</p>
-            <Field label="Full Name" required>
-              <input className="form-input" value={signup.name} onChange={e => setSignup({ ...signup, name: e.target.value })} />
-            </Field>
-            <Field label="Email Address" required>
-              <input className="form-input" type="email" value={signup.email} onChange={e => setSignup({ ...signup, email: e.target.value })} />
-            </Field>
-            <button className="btn btn-primary btn-block" onClick={() => {
-              setSignupEmailOtp(""); setSignupEmailOtpError("");
-              setScreen("mobile-signup-email-otp");
-            }}>Continue</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function ScreenMobileSignupEmailOtp() {
-    return (
-      <div className="page-narrow">
-        <BackLink onClick={() => setScreen("mobile-signup")} />
-        <div className="card">
-          <div className="card-header">Verify Email Address</div>
-          <div className="card-body">
-            <p className="muted-text">An OTP has been sent to <strong>{signup.email}</strong>. (Demo — any 6-digit code will be accepted)</p>
-            <Field label="Enter OTP" required>
-              <input className="form-input" maxLength={6} placeholder="6-digit OTP" value={signupEmailOtp}
-                onChange={e => setSignupEmailOtp(e.target.value.replace(/\D/g, ""))} />
-            </Field>
-            {signupEmailOtpError && <div className="form-error">{signupEmailOtpError}</div>}
-            <button className="btn btn-primary btn-block" onClick={() => {
-              setProfile({ fullName: signup.name, email: signup.email, mobile });
-              setLoggedIn(true);
-              pushNotification("Welcome to MPSVC — profile created successfully.");
-              setScreen("service-select-mobile");
-            }}>Verify & Continue</button>
-            <button className="btn btn-link" onClick={() => setSignupEmailOtpError("")}>Resend OTP</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ---- Forgot Mobile Number: verify via registered email OTP, then set a new number ---- */
-
-  function ScreenForgotMobileEmail() {
-    return (
-      <div className="page-narrow">
-        <BackLink onClick={() => setScreen("user-login-method")} />
-        <div className="card">
-          <div className="card-header">Forgot Mobile Number</div>
+          <div className="card-header">Forgot Registration Number</div>
           <div className="card-body">
             <p className="muted-text">
-              No problem — verify your identity using your registered email ID instead. Once verified, you can set
-              a new mobile number to sign in with.
+              Enter the details on file with your MPSVC profile and we'll look up your registration number for you.
             </p>
-            <Field label="Registered Email ID" required hint="The email address on file with your MPSVC profile.">
-              <input className="form-input" type="email" placeholder="you@example.com" value={forgotEmail}
-                onChange={e => { setForgotEmail(e.target.value); setForgotEmailError(""); }} />
+            <Field label="Full Name" required>
+              <input className="form-input" value={forgotRegnoName}
+                onChange={e => { setForgotRegnoName(e.target.value); setForgotRegnoError(""); }} />
             </Field>
-            {forgotEmailError && <div className="form-error">{forgotEmailError}</div>}
+            <Field label="Registered Email ID" required>
+              <input className="form-input" type="email" placeholder="you@example.com" value={forgotRegnoEmail}
+                onChange={e => { setForgotRegnoEmail(e.target.value); setForgotRegnoError(""); }} />
+            </Field>
+            <Field label="Registered Mobile Number" required hint="10-digit mobile number registered with you.">
+              <input className="form-input" type="tel" maxLength={10} placeholder="9876543210" value={forgotRegnoMobile}
+                onChange={e => { setForgotRegnoMobile(e.target.value.replace(/\D/g, "")); setForgotRegnoError(""); }} />
+            </Field>
+            {forgotRegnoError && <div className="form-error">{forgotRegnoError}</div>}
+            <p className="muted-text small-muted">Demo: this screen accepts any entry and matches it to a sample registration record — {MOCK_RECORD.fullName}.</p>
             <button className="btn btn-primary btn-block" onClick={() => {
-              if (!forgotEmail.trim() || !forgotEmail.includes("@")) {
-                setForgotEmailError("Enter a valid email address.");
+              if (!forgotRegnoName.trim() || !forgotRegnoEmail.trim() || forgotRegnoMobile.length !== 10) {
+                setForgotRegnoError("Enter your full name, registered email ID, and a valid 10-digit mobile number.");
                 return;
               }
-              setForgotOtp(""); setForgotOtpError("");
-              setScreen("forgot-mobile-otp");
-            }}>Send OTP to Email</button>
+              setForgotRegnoResult(MOCK_RECORD);
+              setScreen("forgot-regno-result");
+            }}>Search Registration Number</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 16, flexWrap: "wrap" }}>
-              <span className="muted-text small-muted">Don't have access to this email either?</span>
-              <button className="btn btn-link" style={{ padding: 0 }}
-                onClick={() => { setContactForm({ name: "", regNo: "", altContact: "", message: "" }); setContactFormError(""); setContactTicketId(""); setScreen("contact-admin"); }}>
-                Contact Admin
-              </button>
+  function ScreenForgotRegnoResult() {
+    if (!forgotRegnoResult) {
+      return (
+        <div className="page-narrow">
+          <BackLink onClick={() => setScreen("forgot-regno")} />
+          <div className="card"><div className="card-body muted-text">No matching registration found. Please check your details and try again.</div></div>
+        </div>
+      );
+    }
+    const r = forgotRegnoResult;
+    return (
+      <div className="page-narrow">
+        <BackLink onClick={() => setScreen("forgot-regno")} />
+        <div className="card">
+          <div className="card-header">Registration Number Found</div>
+          <div className="card-body">
+            <NoteBanner tone="blue">A match was found against the details you provided.</NoteBanner>
+            <div className="challan-box">
+              <span className="challan-label">MPSVC Registration Number</span>
+              <span className="challan-number">{r.regNo}</span>
+              <span className="challan-amount">{r.fullName}</span>
             </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function ScreenForgotMobileOtp() {
-    return (
-      <div className="page-narrow">
-        <BackLink onClick={() => setScreen("forgot-mobile-email")} />
-        <div className="card">
-          <div className="card-header">Verify OTP</div>
-          <div className="card-body">
-            <p className="muted-text">An OTP has been sent to <strong>{forgotEmail}</strong>. (Demo — any 6-digit code will be accepted)</p>
-            <Field label="Enter OTP" required>
-              <input className="form-input" maxLength={6} placeholder="6-digit OTP" value={forgotOtp}
-                onChange={e => setForgotOtp(e.target.value.replace(/\D/g, ""))} />
-            </Field>
-            {forgotOtpError && <div className="form-error">{forgotOtpError}</div>}
             <button className="btn btn-primary btn-block" onClick={() => {
-              if (forgotOtp.length !== 6) {
-                setForgotOtpError("Enter the 6-digit OTP sent to your email.");
-                return;
-              }
-              setNewMobile(""); setNewMobileError("");
-              setScreen("forgot-mobile-reset");
-            }}>Verify OTP</button>
-            <button className="btn btn-link" onClick={() => setForgotOtpError("")}>Resend OTP</button>
+              setRegNoInput(r.regNo);
+              setExistingLoginTab("regno");
+              setScreen("existing-login");
+            }}>Login with this Registration Number</button>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  function ScreenForgotMobileReset() {
-    return (
-      <div className="page-narrow">
-        <div className="card">
-          <div className="card-header">Set New Mobile Number</div>
-          <div className="card-body">
-            <NoteBanner tone="blue">
-              Email verified successfully. Enter the new mobile number you'd like to sign in with going forward.
-            </NoteBanner>
-            <Field label="New Mobile Number" required hint="10-digit mobile number. This becomes your login ID for Mobile Number sign-in.">
-              <input className="form-input" type="tel" maxLength={10} placeholder="9876543210" value={newMobile}
-                onChange={e => { setNewMobile(e.target.value.replace(/\D/g, "")); setNewMobileError(""); }} />
-            </Field>
-            {newMobileError && <div className="form-error">{newMobileError}</div>}
-            <button className="btn btn-primary btn-block" onClick={() => {
-              if (newMobile.length !== 10) {
-                setNewMobileError("Enter a valid 10-digit mobile number.");
-                return;
-              }
-              setMobile(newMobile);
-              setActiveLoginTab("mobile");
-              pushNotification("Mobile number updated successfully.");
-              setScreen("forgot-mobile-success");
-            }}>Save New Mobile Number</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function ScreenForgotMobileSuccess() {
-    return (
-      <div className="page-narrow">
-        <div className="result-panel result-success">
-          <CheckCircle2 size={44} />
-          <h2>Mobile Number Updated</h2>
-          <p>Your registered mobile number has been changed to <strong>{mobile}</strong>. Please sign in again using this number.</p>
-          <button className="btn btn-primary" onClick={() => setScreen("user-login-method")}>Continue to Login</button>
         </div>
       </div>
     );
@@ -1227,7 +1401,7 @@ export default function MPSVCPrototype() {
     }
     return (
       <div className="page-narrow">
-        <BackLink onClick={() => setScreen("user-login-method")} />
+        <BackLink onClick={() => setScreen("existing-login")} />
         <div className="card">
           <div className="card-header">Contact Admin</div>
           <div className="card-body">
@@ -1269,16 +1443,25 @@ export default function MPSVCPrototype() {
 
   const SERVICE_ICONS = {
     provisional: GraduationCap, new: UserPlus, "transfer-in": ArrowLeftRight,
-    renewal: RefreshCw, "transfer-out": ArrowLeftRight,
+    renewal: RefreshCw, "transfer-out": ArrowLeftRight, "add-qualification": Award,
   };
 
   function ScreenServiceSelect({ options }) {
+    // Spell out why this particular menu is on offer — the list is not the same for
+    // every citizen, it is the result of the college / credential question they
+    // answered on the way in (see availableServices).
+    const reason =
+      credentialType === "regno" ? "These are the services available against your MPSVC Registration Number."
+      : credentialType === "provisional" ? "Your Provisional Registration is already on file, so New Registration is the next step."
+      : applicantType === "new" && collegeOrigin === "mp" ? `Your college (${formData.collegeName}) is in Madhya Pradesh, so Provisional Registration is open to you.`
+      : applicantType === "new" ? `Your college (${formData.collegeName}) is outside Madhya Pradesh, so you may apply for New Registration directly.`
+      : "Choose the service you'd like to apply for.";
     return (
       <div className="page-narrow">
         <div className="card">
           <div className="card-header">Select a Service</div>
           <div className="card-body">
-            <p className="muted-text">Welcome, {profile.fullName || "Applicant"}. Choose the service you'd like to apply for.</p>
+            <p className="muted-text">Welcome, {profile.fullName || "Applicant"}. {reason}</p>
             <div className="service-grid">
               {options.map(key => {
                 const Icon = SERVICE_ICONS[key] || GraduationCap;
@@ -1286,7 +1469,7 @@ export default function MPSVCPrototype() {
                   <div className="service-card" role="button" tabIndex={0} key={key}
                     onClick={() => {
                       setServiceType(key);
-                      if (key !== "renewal" && key !== "transfer-out") {
+                      if (key !== "renewal" && key !== "transfer-out" && key !== "add-qualification") {
                         setFormData(f => ({ ...f, fullName: profile.fullName || f.fullName }));
                       }
                       setScreen("app-form");
@@ -1333,7 +1516,7 @@ export default function MPSVCPrototype() {
 
     return (
       <div className="page-wide">
-        <BackLink onClick={() => setScreen(loginMethod === "mobile" ? "service-select-mobile" : "service-select-regno")} />
+        <BackLink onClick={() => backFromForm()} />
         <WizardRibbon step={2} />
         <div className="card">
           <div className="card-header">Application Form — {SERVICES.provisional.label}</div>
@@ -1525,7 +1708,7 @@ export default function MPSVCPrototype() {
             </div>
 
             <div className="form-actions">
-              <button className="btn btn-outline" onClick={() => setScreen(loginMethod === "mobile" ? "service-select-mobile" : "service-select-regno")}><ChevronLeft size={16} /> Back</button>
+              <button className="btn btn-outline" onClick={() => backFromForm()}><ChevronLeft size={16} /> Back</button>
               <button className="btn btn-primary" onClick={() => setScreen("doc-upload")}>Continue to Documents <ChevronRight size={16} /></button>
             </div>
           </div>
@@ -1568,7 +1751,7 @@ export default function MPSVCPrototype() {
 
     return (
       <div className="page-wide">
-        <BackLink onClick={() => setScreen(loginMethod === "mobile" ? "service-select-mobile" : "service-select-regno")} />
+        <BackLink onClick={() => backFromForm()} />
         <WizardRibbon step={2} />
         <div className="card">
           <div className="card-header">Application Form — {SERVICES[serviceType].label}</div>
@@ -1830,7 +2013,7 @@ export default function MPSVCPrototype() {
             )}
 
             <div className="form-actions">
-              <button className="btn btn-outline" onClick={() => setScreen(loginMethod === "mobile" ? "service-select-mobile" : "service-select-regno")}><ChevronLeft size={16} /> Back</button>
+              <button className="btn btn-outline" onClick={() => backFromForm()}><ChevronLeft size={16} /> Back</button>
               <button className="btn btn-primary" onClick={() => setScreen("doc-upload")}>Continue to Documents <ChevronRight size={16} /></button>
             </div>
           </div>
@@ -1844,11 +2027,12 @@ export default function MPSVCPrototype() {
     if (serviceType === "new" || serviceType === "transfer-in") return <ScreenNewRegistrationForm />;
     const isTransfer = serviceType === "transfer-out";
     const isRenewal = serviceType === "renewal";
+    const isAddQual = serviceType === "add-qualification";
     const set = (k, v) => setFormData(f => ({ ...f, [k]: v }));
 
     return (
       <div className="page-wide">
-        <BackLink onClick={() => setScreen(loginMethod === "mobile" ? "service-select-mobile" : "service-select-regno")} />
+        <BackLink onClick={() => backFromForm()} />
         <WizardRibbon step={2} />
         <div className="card">
           <div className="card-header">Application Form — {SERVICES[serviceType].label}</div>
@@ -1916,6 +2100,28 @@ export default function MPSVCPrototype() {
               </>
             )}
 
+            {isAddQual && (
+              <>
+                {/* The registration itself is unchanged — this application only adds a
+                    further qualification (M.V.Sc., Ph.D., diploma) to the existing
+                    record, so the existing registration is shown read-only alongside. */}
+                <div className="section-title">Qualification to be Added <span className="section-title-tag">Addition of Qualification</span></div>
+                <div className="two-col-grid">
+                  <Field label="Existing Registration Number"><input className="form-input" value={formData.existingRegNo} readOnly /></Field>
+                  <Field label="Degree / Qualification">
+                    <select className="form-input" value={formData.addlQualDegree} onChange={e => set("addlQualDegree", e.target.value)}>
+                      <option value="">Select</option>
+                      <option>M.V.Sc.</option><option>Ph.D.</option><option>Post Graduate Diploma</option><option>Other</option>
+                    </select>
+                  </Field>
+                  <Field label="Specialization / Subject"><input className="form-input" value={formData.addlQualSpecialization} onChange={e => set("addlQualSpecialization", e.target.value)} /></Field>
+                  <Field label="University"><input className="form-input" value={formData.addlQualUniversity} onChange={e => set("addlQualUniversity", e.target.value)} /></Field>
+                  <Field label="College / Institute"><input className="form-input" value={formData.addlQualCollege} onChange={e => set("addlQualCollege", e.target.value)} /></Field>
+                  <Field label="Year of Passing"><input className="form-input" value={formData.addlQualYear} onChange={e => set("addlQualYear", e.target.value)} /></Field>
+                </div>
+              </>
+            )}
+
             {isRenewal && (
               <>
                 <div className="section-title">Existing Registration Validity <span className="section-title-tag">Renewal</span></div>
@@ -1932,7 +2138,7 @@ export default function MPSVCPrototype() {
             )}
 
             <div className="form-actions">
-              <button className="btn btn-outline" onClick={() => setScreen(loginMethod === "mobile" ? "service-select-mobile" : "service-select-regno")}><ChevronLeft size={16} /> Back</button>
+              <button className="btn btn-outline" onClick={() => backFromForm()}><ChevronLeft size={16} /> Back</button>
               <button className="btn btn-primary" onClick={() => setScreen("doc-upload")}>Continue to Documents <ChevronRight size={16} /></button>
             </div>
           </div>
@@ -1954,7 +2160,7 @@ export default function MPSVCPrototype() {
     }
 
     function handleContinue() {
-      setScreen("payment");
+      setScreen("review");
     }
 
     return (
@@ -1998,7 +2204,300 @@ export default function MPSVCPrototype() {
             </div>
             <div className="form-actions">
               <button className="btn btn-outline" onClick={() => setScreen("app-form")}><ChevronLeft size={16} /> Back</button>
-              <button className="btn btn-primary" onClick={handleContinue}>Continue to Payment <ChevronRight size={16} /></button>
+              <button className="btn btn-primary" onClick={handleContinue}>Continue to Review <ChevronRight size={16} /></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Pre-payment "Review & Submit" step — shows everything the citizen entered across
+  // the Application Form and Document Upload steps in one place before they pay, so
+  // they can catch a mistake before committing. Same field layout as
+  // ScreenApplicationDetails (the post-submission view), just without an Application
+  // ID/Status header, and ending in "Proceed to Payment" instead of a read-only view.
+  function ScreenReview() {
+    const isProvisional = serviceType === "provisional";
+    const isNew = serviceType === "new" || serviceType === "transfer-in";
+    const isTransfer = serviceType === "transfer-out";
+    const isRenewal = serviceType === "renewal";
+    const isAddQual = serviceType === "add-qualification";
+    const isTransferIn = serviceType === "transfer-in";
+    const checklist = getChecklist(serviceType);
+    const dash = v => v || "—";
+
+    return (
+      <div className="page-wide">
+        <BackLink onClick={() => setScreen("doc-upload")} />
+        <WizardRibbon step={4} />
+        <div className="card">
+          <div className="card-header">Review &amp; Submit — {SERVICES[serviceType].label}</div>
+          <div className="card-body">
+            <NoteBanner tone="blue">Please review every section below carefully — you won't be able to edit these details once payment is complete.</NoteBanner>
+
+            {isProvisional ? (
+              <>
+                <div className="section-title">Personal Details</div>
+                <div className="confirm-grid">
+                  <div><span>First Name</span><strong>{dash(formData.firstName)}</strong></div>
+                  <div><span>Middle Name</span><strong>{dash(formData.middleName)}</strong></div>
+                  <div><span>Last Name</span><strong>{dash(formData.lastName)}</strong></div>
+                  <div><span>Father Name</span><strong>{dash(formData.fatherName)}</strong></div>
+                  <div><span>Date Of Birth</span><strong>{dash(formData.dob)}</strong></div>
+                  <div><span>Gender</span><strong>{dash(formData.gender)}</strong></div>
+                </div>
+
+                <div className="section-title">Residential Address</div>
+                <div className="confirm-grid">
+                  <div><span>Area Type</span><strong>{dash(formData.resAreaType)}</strong></div>
+                  <div><span>State</span><strong>{dash(formData.resState)}</strong></div>
+                  <div><span>District</span><strong>{dash(formData.resDistrict)}</strong></div>
+                  {formData.resAreaType === "Rural" ? (
+                    <>
+                      <div><span>Block</span><strong>{dash(formData.resBlock)}</strong></div>
+                      <div><span>Panchayat</span><strong>{dash(formData.resPanchayat)}</strong></div>
+                      <div><span>Gram</span><strong>{dash(formData.resGram)}</strong></div>
+                    </>
+                  ) : (
+                    <>
+                      <div><span>City</span><strong>{dash(formData.resCity)}</strong></div>
+                      <div><span>Ward</span><strong>{dash(formData.resWard)}</strong></div>
+                    </>
+                  )}
+                  <div><span>Pin Code</span><strong>{dash(formData.resPincode)}</strong></div>
+                  <div><span>Post Office</span><strong>{dash(formData.resPostOffice)}</strong></div>
+                  <div><span>Complete Address</span><strong>{dash(formData.resAddress)}</strong></div>
+                </div>
+
+                <div className="section-title">Permanent Address</div>
+                <div className="confirm-grid">
+                  <div><span>Area Type</span><strong>{dash(formData.permAreaType)}</strong></div>
+                  <div><span>State</span><strong>{dash(formData.permState)}</strong></div>
+                  <div><span>District</span><strong>{dash(formData.permDistrict)}</strong></div>
+                  {formData.permAreaType === "Rural" ? (
+                    <>
+                      <div><span>Block</span><strong>{dash(formData.permBlock)}</strong></div>
+                      <div><span>Panchayat</span><strong>{dash(formData.permPanchayat)}</strong></div>
+                      <div><span>Gram</span><strong>{dash(formData.permGram)}</strong></div>
+                    </>
+                  ) : (
+                    <>
+                      <div><span>City</span><strong>{dash(formData.permCity)}</strong></div>
+                      <div><span>Ward</span><strong>{dash(formData.permWard)}</strong></div>
+                    </>
+                  )}
+                  <div><span>Pin Code</span><strong>{dash(formData.permPincode)}</strong></div>
+                  <div><span>Post Office</span><strong>{dash(formData.permPostOffice)}</strong></div>
+                  <div><span>Complete Address</span><strong>{dash(formData.permAddress)}</strong></div>
+                </div>
+
+                <div className="section-title">Contact Details</div>
+                <div className="confirm-grid">
+                  <div><span>Preferred Address</span><strong>{dash(formData.preferredAddress)}</strong></div>
+                  <div><span>Email Id</span><strong>{dash(formData.email)}</strong></div>
+                  <div><span>Primary Mobile No.</span><strong>{dash(formData.mobile1)}</strong></div>
+                  <div><span>Alternate Mobile Number</span><strong>{dash(formData.mobile2)}</strong></div>
+                </div>
+
+                <div className="section-title">Qualification</div>
+                <div className="confirm-grid">
+                  <div><span>Roll No</span><strong>{dash(formData.rollNo)}</strong></div>
+                  <div><span>University Enrollment No</span><strong>{dash(formData.universityEnrollmentNo)}</strong></div>
+                  <div><span>Degree Name</span><strong>{dash(formData.provDegreeName)}</strong></div>
+                  <div><span>Name of University</span><strong>{dash(formData.provUniversityName)}</strong></div>
+                  <div><span>Name of College</span><strong>{dash(formData.provCollegeName)}</strong></div>
+                  <div><span>Passing Year</span><strong>{dash(formData.provPassingYear)}</strong></div>
+                </div>
+              </>
+            ) : isNew ? (
+              <>
+                <div className="section-title">Personal Details</div>
+                <div className="confirm-grid">
+                  <div><span>First Name</span><strong>{dash(formData.firstName)}</strong></div>
+                  <div><span>Middle Name</span><strong>{dash(formData.middleName)}</strong></div>
+                  <div><span>Last Name</span><strong>{dash(formData.lastName)}</strong></div>
+                  <div><span>Father Name</span><strong>{dash(formData.fatherName)}</strong></div>
+                  <div><span>Date Of Birth</span><strong>{dash(formData.dob)}</strong></div>
+                  <div><span>Gender</span><strong>{dash(formData.gender)}</strong></div>
+                  <div><span>Organization</span><strong>{dash(formData.organization)}</strong></div>
+                  <div><span>Department</span><strong>{dash(formData.department)}</strong></div>
+                  <div><span>Designation</span><strong>{dash(formData.designation)}</strong></div>
+                  <div><span>Sector</span><strong>{dash(formData.sector)}</strong></div>
+                </div>
+
+                <div className="section-title">Residential Address</div>
+                <div className="confirm-grid">
+                  <div><span>Area Type</span><strong>{dash(formData.resAreaType)}</strong></div>
+                  <div><span>State</span><strong>{dash(formData.resState)}</strong></div>
+                  <div><span>District</span><strong>{dash(formData.resDistrict)}</strong></div>
+                  {formData.resAreaType === "Rural" ? (
+                    <>
+                      <div><span>Block</span><strong>{dash(formData.resBlock)}</strong></div>
+                      <div><span>Panchayat</span><strong>{dash(formData.resPanchayat)}</strong></div>
+                      <div><span>Gram</span><strong>{dash(formData.resGram)}</strong></div>
+                    </>
+                  ) : (
+                    <>
+                      <div><span>City</span><strong>{dash(formData.resCity)}</strong></div>
+                      <div><span>Ward</span><strong>{dash(formData.resWard)}</strong></div>
+                    </>
+                  )}
+                  <div><span>Pin Code</span><strong>{dash(formData.resPincode)}</strong></div>
+                  <div><span>Post Office</span><strong>{dash(formData.resPostOffice)}</strong></div>
+                  <div><span>Complete Address</span><strong>{dash(formData.resAddress)}</strong></div>
+                </div>
+
+                <div className="section-title">Professional Address</div>
+                <div className="confirm-grid">
+                  <div><span>Area Type</span><strong>{dash(formData.proAreaType)}</strong></div>
+                  <div><span>State</span><strong>{dash(formData.proState)}</strong></div>
+                  <div><span>District</span><strong>{dash(formData.proDistrict)}</strong></div>
+                  {formData.proAreaType === "Rural" ? (
+                    <>
+                      <div><span>Block</span><strong>{dash(formData.proBlock)}</strong></div>
+                      <div><span>Panchayat</span><strong>{dash(formData.proPanchayat)}</strong></div>
+                      <div><span>Gram</span><strong>{dash(formData.proGram)}</strong></div>
+                    </>
+                  ) : (
+                    <>
+                      <div><span>City</span><strong>{dash(formData.proCity)}</strong></div>
+                      <div><span>Ward</span><strong>{dash(formData.proWard)}</strong></div>
+                    </>
+                  )}
+                  <div><span>Pin Code</span><strong>{dash(formData.proPincode)}</strong></div>
+                  <div><span>Post Office</span><strong>{dash(formData.proPostOffice)}</strong></div>
+                  <div><span>Complete Address</span><strong>{dash(formData.proAddress)}</strong></div>
+                </div>
+
+                <div className="section-title">Permanent Address</div>
+                <div className="confirm-grid">
+                  <div><span>Area Type</span><strong>{dash(formData.permAreaType)}</strong></div>
+                  <div><span>State</span><strong>{dash(formData.permState)}</strong></div>
+                  <div><span>District</span><strong>{dash(formData.permDistrict)}</strong></div>
+                  {formData.permAreaType === "Rural" ? (
+                    <>
+                      <div><span>Block</span><strong>{dash(formData.permBlock)}</strong></div>
+                      <div><span>Panchayat</span><strong>{dash(formData.permPanchayat)}</strong></div>
+                      <div><span>Gram</span><strong>{dash(formData.permGram)}</strong></div>
+                    </>
+                  ) : (
+                    <>
+                      <div><span>City</span><strong>{dash(formData.permCity)}</strong></div>
+                      <div><span>Ward</span><strong>{dash(formData.permWard)}</strong></div>
+                    </>
+                  )}
+                  <div><span>Pin Code</span><strong>{dash(formData.permPincode)}</strong></div>
+                  <div><span>Post Office</span><strong>{dash(formData.permPostOffice)}</strong></div>
+                  <div><span>Complete Address</span><strong>{dash(formData.permAddress)}</strong></div>
+                </div>
+
+                <div className="section-title">Contact Details</div>
+                <div className="confirm-grid">
+                  <div><span>Preferred Address</span><strong>{dash(formData.preferredAddress)}</strong></div>
+                  <div><span>Land-Line No.</span><strong>{dash(formData.landline)}</strong></div>
+                  <div><span>Primary Mobile No.</span><strong>{dash(formData.mobile1)}</strong></div>
+                  <div><span>Alternate Mobile Number</span><strong>{dash(formData.mobile2)}</strong></div>
+                  <div><span>Fax No.</span><strong>{dash(formData.fax)}</strong></div>
+                  <div><span>Email Id</span><strong>{dash(formData.email)}</strong></div>
+                </div>
+
+                <div className="section-title">Qualification</div>
+                <div className="confirm-grid">
+                  <div><span>Degree Name</span><strong>B.V.SC.&amp; A.H.</strong></div>
+                  <div><span>Name of University</span><strong>{dash(formData.qualBvscUniversity)}</strong></div>
+                  <div><span>Name of College</span><strong>{dash(formData.qualBvscCollege)}</strong></div>
+                  <div><span>Passing Year</span><strong>{dash(formData.qualBvscYear)}</strong></div>
+                  <div><span>Graduation Degree / PDC Date</span><strong>{dash(formData.gradDate)}</strong></div>
+                  <div><span>Degree Id</span><strong>{dash(formData.degreeId)}</strong></div>
+                </div>
+
+                {isTransferIn && (
+                  <>
+                    <div className="section-title">Previous State Council Details <span className="section-title-tag">NOC Required</span></div>
+                    <div className="confirm-grid">
+                      <div><span>Previous State Council Name</span><strong>{dash(formData.nocPrevCouncilName)}</strong></div>
+                      <div><span>Previous Registration Number</span><strong>{dash(formData.nocPrevRegNo)}</strong></div>
+                      <div><span>Previous Registration Date</span><strong>{dash(formData.nocPrevRegDate)}</strong></div>
+                      <div><span>Details</span><strong>{dash(formData.nocDetails)}</strong></div>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="section-title">Applicant Details</div>
+                <div className="confirm-grid">
+                  <div><span>Full Name</span><strong>{dash(formData.fullName)}</strong></div>
+                  <div><span>College Name</span><strong>{dash(formData.collegeName)}</strong></div>
+                  <div><span>Father's / Husband's Name</span><strong>{dash(formData.guardianName)}</strong></div>
+                  <div><span>Date of Birth</span><strong>{dash(formData.dob)}</strong></div>
+                  <div><span>Gender</span><strong>{dash(formData.gender)}</strong></div>
+                  <div><span>Category</span><strong>{dash(formData.category)}</strong></div>
+                  <div><span>Address</span><strong>{dash(formData.address)}</strong></div>
+                </div>
+
+                <div className="section-title">Qualification Details</div>
+                <div className="confirm-grid">
+                  <div><span>Degree</span><strong>{dash(formData.degree)}</strong></div>
+                  <div><span>University</span><strong>{dash(formData.university)}</strong></div>
+                  <div><span>Year of Passing</span><strong>{dash(formData.yearOfPassing)}</strong></div>
+                </div>
+
+                <div className="section-title">ID Proof</div>
+                <div className="confirm-grid">
+                  <div><span>ID Proof Type</span><strong>{dash(formData.idProofType)}</strong></div>
+                  <div><span>ID Proof Number</span><strong>{dash(formData.idProofNumber)}</strong></div>
+                </div>
+
+                {isTransfer && (
+                  <>
+                    <div className="section-title">Transfer Details</div>
+                    <div className="confirm-grid">
+                      <div><span>Reason for Transfer</span><strong>{dash(formData.transferReason)}</strong></div>
+                    </div>
+                  </>
+                )}
+                {isRenewal && (
+                  <>
+                    <div className="section-title">Renewal Details</div>
+                    <div className="confirm-grid">
+                      <div><span>Renewal Period Requested</span><strong>{dash(formData.renewalPeriod)}</strong></div>
+                    </div>
+                  </>
+                )}
+                {isAddQual && (
+                  <>
+                    <div className="section-title">Qualification to be Added</div>
+                    <div className="confirm-grid">
+                      <div><span>Existing Registration Number</span><strong>{dash(formData.existingRegNo)}</strong></div>
+                      <div><span>Degree / Qualification</span><strong>{dash(formData.addlQualDegree)}</strong></div>
+                      <div><span>Specialization / Subject</span><strong>{dash(formData.addlQualSpecialization)}</strong></div>
+                      <div><span>University</span><strong>{dash(formData.addlQualUniversity)}</strong></div>
+                      <div><span>College / Institute</span><strong>{dash(formData.addlQualCollege)}</strong></div>
+                      <div><span>Year of Passing</span><strong>{dash(formData.addlQualYear)}</strong></div>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+
+            <div className="section-title">Documents</div>
+            <div className="confirm-grid">
+              {!isProvisional && !isNew && (
+                <>
+                  <div><span>Photograph</span><strong>{dash(photoFile)}</strong></div>
+                  <div><span>Signature</span><strong>{dash(sigFile)}</strong></div>
+                </>
+              )}
+              {checklist.map(c => (
+                <div key={c.key}><span>{c.label}</span><strong>{dash(isProvisional ? documents[c.key] : documents[c.key]?.fileName)}</strong></div>
+              ))}
+            </div>
+
+            <div className="form-actions">
+              <button className="btn btn-outline" onClick={() => setScreen("doc-upload")}><ChevronLeft size={16} /> Back</button>
+              <button className="btn btn-primary" onClick={() => setScreen("payment")}>Proceed to Payment <ChevronRight size={16} /></button>
             </div>
           </div>
         </div>
@@ -2021,7 +2520,7 @@ export default function MPSVCPrototype() {
 
     return (
       <div className="page-narrow">
-        <WizardRibbon step={4} />
+        <WizardRibbon step={5} />
         <div className="card">
           <div className="card-header">Payment</div>
           <div className="card-body">
@@ -2064,7 +2563,7 @@ export default function MPSVCPrototype() {
             )}
 
             <div className="form-actions">
-              <button className="btn btn-outline" onClick={() => setScreen("doc-upload")}><ChevronLeft size={16} /> Back</button>
+              <button className="btn btn-outline" onClick={() => setScreen("review")}><ChevronLeft size={16} /> Back</button>
               <button className="btn btn-primary" onClick={handleProceed}>Proceed <ChevronRight size={16} /></button>
             </div>
           </div>
@@ -2105,6 +2604,7 @@ export default function MPSVCPrototype() {
           <button className="btn btn-primary" onClick={() => {
             const id = applicationId || genAppId(serviceType);
             setApplicationId(id);
+            syncProfileFromForm();
             setAppStatus("submitted_payment_confirmed");
             setStatusHistory([{ code: "submitted_payment_confirmed", time: nowStamp() }]);
             pushNotification(`Submitted – Payment Confirmed — Application ${id}`);
@@ -2148,6 +2648,7 @@ export default function MPSVCPrototype() {
             <button className="btn btn-primary btn-block" onClick={() => {
               const id = genAppId(serviceType);
               setApplicationId(id);
+              syncProfileFromForm();
               setAppStatus("submitted_payment_pending");
               setStatusHistory([{ code: "submitted_payment_pending", time: nowStamp() }]);
               pushNotification(`Submitted – Payment Confirmation Pending — Application ${id}`);
@@ -2247,6 +2748,7 @@ export default function MPSVCPrototype() {
                   <button className="btn btn-outline btn-sm" onClick={() => setScreen("existing-reg-application-details")}>View Application Details</button>
                   <button className="btn btn-outline btn-sm" onClick={() => openCertDuplicate(current.id)}>Apply for Duplicate</button>
                   <button className="btn btn-primary btn-sm" onClick={() => { setServiceType("renewal"); setScreen("app-form"); }}>Apply for Renewal</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => { setServiceType("add-qualification"); setScreen("app-form"); }}>Addition of Qualification</button>
                   <button className="btn btn-outline-danger btn-sm" onClick={() => { setServiceType("transfer-out"); setScreen("app-form"); }}>Transfer Out of Madhya Pradesh</button>
                 </div>
               </div>
@@ -2327,6 +2829,42 @@ export default function MPSVCPrototype() {
           </div>
         )}
 
+        {/* Provisional Certificate History — the counterpart, for a citizen who logged
+            in with a Provisional Certificate Number, of the Certificate History table
+            that Registration Number login gets above. Provisional Registration is a
+            one-time, digital-only certificate, so this lists just that one row. */}
+        {provisionalRecord && (
+          <>
+            <div className="section-title" style={{ marginTop: 4 }}>Provisional Certificate History</div>
+            <div className="card table-card" style={{ marginBottom: 16 }}>
+              <div className="table-scroll">
+                <table className="cert-history-table">
+                  <thead>
+                    <tr>
+                      <th>Certificate</th><th>Certificate No.</th><th>Issue Date</th><th>College</th><th>Status</th><th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><div className="cert-history-kind">{SERVICES.provisional.label}</div></td>
+                      <td className="cert-history-mono">{provisionalRecord.certNo}</td>
+                      <td>{formatLongDate(provisionalRecord.issueDate)}</td>
+                      <td>{provisionalRecord.provCollegeName || "—"}</td>
+                      <td><StatusBadge code="certificate_issued" /></td>
+                      <td>
+                        <div className="cert-history-actions">
+                          <button className="btn btn-outline btn-sm" onClick={() => setScreen("provisional-certificate")}>View</button>
+                          <button className="btn btn-outline btn-sm" onClick={() => setScreen("provisional-application-details")}>Application Details</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
         {applicationId ? (
           <div className="card app-card">
             <div className="app-card-top">
@@ -2354,14 +2892,14 @@ export default function MPSVCPrototype() {
             </div>
           </div>
         ) : (
-          !existingRegRecord && (
+          !existingRegRecord && !provisionalRecord && (
             <div className="card"><div className="card-body muted-text">You have no active applications yet.</div></div>
           )
         )}
 
         {!provisionalRecord && !existingRegRecord && (
           <div className="dashboard-grid">
-            <div className="dash-tile" role="button" tabIndex={0} onClick={() => setScreen(loginMethod === "mobile" ? "service-select-mobile" : "service-select-regno")}>
+            <div className="dash-tile" role="button" tabIndex={0} onClick={() => setScreen("service-select")}>
               <div className="dash-tile-icon"><FileText size={18} /></div><span>Start New Application</span>
             </div>
             <div className="dash-tile" role="button" tabIndex={0} onClick={() => applicationId && setScreen("track-status")}>
@@ -2388,6 +2926,7 @@ export default function MPSVCPrototype() {
     }
     const isTransfer = serviceType === "transfer-out";
     const isRenewal = serviceType === "renewal";
+    const isAddQual = serviceType === "add-qualification";
     const isProvisional = serviceType === "provisional";
     const isNew = serviceType === "new" || serviceType === "transfer-in";
     const isTransferIn = serviceType === "transfer-in";
@@ -2731,6 +3270,23 @@ export default function MPSVCPrototype() {
                     </div>
                   </>
                 )}
+                {isAddQual && (
+                  <>
+                    <div className="section-title">Qualification to be Added</div>
+                    <div className="confirm-grid">
+                      <div><span>Degree / Qualification</span><strong>{dash(formData.addlQualDegree)}</strong></div>
+                      <div><span>Specialization / Subject</span><strong>{dash(formData.addlQualSpecialization)}</strong></div>
+                      <div><span>University</span><strong>{dash(formData.addlQualUniversity)}</strong></div>
+                      <div><span>College / Institute</span><strong>{dash(formData.addlQualCollege)}</strong></div>
+                      <div><span>Year of Passing</span><strong>{dash(formData.addlQualYear)}</strong></div>
+                    </div>
+                    <div className="section-title">Past Details — Existing Registration</div>
+                    <div className="confirm-grid">
+                      <div><span>Existing Registration Number</span><strong>{dash(formData.existingRegNo)}</strong></div>
+                      <div><span>Registration Valid Till</span><strong>{dash(formData.existingRegValidTill)}</strong></div>
+                    </div>
+                  </>
+                )}
 
                 {provisionalRecord ? (
                   <>
@@ -2740,7 +3296,7 @@ export default function MPSVCPrototype() {
                       <div><span>Issue Date</span><strong>{provisionalRecord.issueDate}</strong></div>
                     </div>
                   </>
-                ) : (!isTransfer && !isRenewal) && (
+                ) : (!isTransfer && !isRenewal && !isAddQual) && (
                   <p className="muted-text small-muted">No past applications or prior registrations on file for this applicant.</p>
                 )}
               </>
@@ -3400,20 +3956,17 @@ export default function MPSVCPrototype() {
   function renderScreen() {
     switch (screen) {
       case "login": return <ScreenLogin />;
-      case "user-login-method": return <ScreenUserLoginMethod />;
+      case "college-check": return <ScreenCollegeCheck />;
+      case "existing-login": return <ScreenExistingLogin />;
+      case "prov-cert-otp": return <ScreenProvCertOtp />;
       case "regno-otp": return <ScreenRegnoOtp />;
-      case "mobile-otp": return <ScreenMobileOtp />;
-      case "mobile-signup": return <ScreenMobileSignup />;
-      case "mobile-signup-email-otp": return <ScreenMobileSignupEmailOtp />;
-      case "forgot-mobile-email": return <ScreenForgotMobileEmail />;
-      case "forgot-mobile-otp": return <ScreenForgotMobileOtp />;
-      case "forgot-mobile-reset": return <ScreenForgotMobileReset />;
-      case "forgot-mobile-success": return <ScreenForgotMobileSuccess />;
+      case "forgot-regno": return <ScreenForgotRegno />;
+      case "forgot-regno-result": return <ScreenForgotRegnoResult />;
       case "contact-admin": return <ScreenContactAdmin />;
-      case "service-select-mobile": return <ScreenServiceSelect options={["provisional", "new", "transfer-in"]} />;
-      case "service-select-regno": return <ScreenServiceSelect options={["renewal", "transfer-out"]} />;
+      case "service-select": return <ScreenServiceSelect options={availableServices()} />;
       case "app-form": return <ScreenAppForm />;
       case "doc-upload": return <ScreenDocUpload />;
+      case "review": return <ScreenReview />;
       case "payment": return <ScreenPayment />;
       case "payment-online": return <ScreenPaymentOnline />;
       case "payment-result-success": return <ScreenPaymentSuccess />;
@@ -3610,6 +4163,7 @@ const CSS = `
 
 /* Login options */
 .login-options { display: flex; flex-direction: column; gap: 12px; }
+.login-options-label { margin-top: 8px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mp-gray-600); }
 .login-option-card {
   display: flex; align-items: center; gap: 16px; background: #fff; border: 1px solid var(--mp-gray-200);
   border-radius: var(--radius); padding: 18px 20px; cursor: pointer; box-shadow: var(--shadow-sm);
@@ -3729,6 +4283,7 @@ const CSS = `
 .service-card { display: flex; align-items: center; gap: 12px; border: 1px solid var(--mp-gray-200); border-radius: var(--radius); padding: 14px; cursor: pointer; color: var(--mp-blue-700); }
 .service-card:hover { border-color: var(--mp-blue-700); background: var(--mp-blue-50); }
 .service-card-label { flex: 1; font-weight: 600; font-size: 13.5px; color: var(--mp-gray-900); }
+.service-card-sub { font-weight: 400; font-size: 12px; color: var(--mp-gray-600); margin-top: 2px; line-height: 1.4; }
 .service-card-arrow { color: var(--mp-gray-400); }
 
 /* Upload box */
