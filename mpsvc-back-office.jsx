@@ -5,7 +5,7 @@ import {
   ClipboardCheck, History as HistoryIcon, Landmark, Eye, AlertTriangle, ShieldCheck,
   Calendar, X, Menu, IndianRupee, Stamp, Paperclip, GraduationCap, Building2, Phone,
   Mail, MapPin, BadgeCheck, Circle, PackageCheck, ArrowLeft, RotateCcw,
-  KeyRound, Fingerprint, Filter, SlidersHorizontal, FileSpreadsheet, Plus, FileImage,
+  KeyRound, Fingerprint, Filter, SlidersHorizontal, FileSpreadsheet, Plus, FileImage, Flag,
 } from "lucide-react";
 
 /* ============================== TOKENS ============================== */
@@ -144,6 +144,21 @@ const RAW = [
     college: "College of Veterinary Science & A.H., Jabalpur", degree: "B.V.Sc & A.H.", year: "2025",
     mode: "Offline", amount: 1500, challan: "CHL-88213", challanDate: "2026-07-28",
     submitted: "2026-07-27", status: ST.PENDING_PAYMENT, regNo: null,
+    // Complete field set collected on the citizen-side New Registration form — shown in
+    // full to the office user on the Application Details / Applicant Profile tabs.
+    newRegDetails: {
+      firstName: "Aditya", middleName: "", lastName: "Sharma",
+      organization: "", department: "", designation: "", sector: "Self-Employed",
+      resAddress: "Ward 12, Napier Town", resAreaType: "Urban", resCity: "Jabalpur", resWard: "Ward 12", resPostOffice: "Jabalpur G.P.O.",
+      resState: "Madhya Pradesh", resDistrict: "Jabalpur", resPincode: "482001",
+      proAddress: "", proAreaType: "", proState: "Madhya Pradesh", proDistrict: "", proPincode: "",
+      permAddress: "Ward 12, Napier Town", permAreaType: "Urban", permCity: "Jabalpur", permWard: "Ward 12", permPostOffice: "Jabalpur G.P.O.",
+      permState: "Madhya Pradesh", permDistrict: "Jabalpur", permPincode: "482001",
+      preferredAddress: "Residential Address", landline: "", mobile2: "", fax: "",
+      qualBvscUniversity: "Nanaji Deshmukh Veterinary Science University, Jabalpur",
+      qualBvscCollege: "College of Veterinary Science & A.H., Jabalpur", qualBvscYear: "2025",
+      gradDate: "2025-06-15", degreeId: "NDVSU/2025/00812",
+    },
     log: [entry("Aditya Sharma", "system", "Application submitted online", "2026-07-27")],
   },
   {
@@ -164,6 +179,21 @@ const RAW = [
     college: "College of Veterinary & Animal Science, Bikaner", degree: "B.V.Sc & A.H.", year: "2016",
     mode: "Online", amount: 1200, challan: "TXN-55921", challanDate: "2026-07-30",
     submitted: "2026-07-30", status: ST.PENDING_SCRUTINY, regNo: null,
+    newRegDetails: {
+      firstName: "Ramesh", middleName: "", lastName: "Patel",
+      organization: "", department: "", designation: "", sector: "Private",
+      resAddress: "Sector 4", resAreaType: "Urban", resCity: "Indore", resWard: "Ward 9", resPostOffice: "Indore G.P.O.",
+      resState: "Madhya Pradesh", resDistrict: "Indore", resPincode: "452001",
+      proAddress: "", proAreaType: "", proState: "Madhya Pradesh", proDistrict: "", proPincode: "",
+      permAddress: "Sector 4", permAreaType: "Urban", permCity: "Kota", permWard: "Ward 4", permPostOffice: "Kota G.P.O.",
+      permState: "Rajasthan", permDistrict: "Kota", permPincode: "324001",
+      preferredAddress: "Residential Address", landline: "", mobile2: "", fax: "",
+      qualBvscUniversity: "Rajasthan University of Veterinary and Animal Sciences, Bikaner",
+      qualBvscCollege: "College of Veterinary & Animal Science, Bikaner", qualBvscYear: "2016",
+      gradDate: "2016-06-12", degreeId: "RAJUVAS/2016/00287",
+      nocPrevCouncilName: "Rajasthan Veterinary Council", nocPrevRegNo: "RVC/2016/04521", nocPrevRegDate: "2016-08-20",
+      nocDetails: "NOC issued by Rajasthan Veterinary Council on relocation for employment; no disciplinary proceedings pending.",
+    },
     log: [
       entry("Ramesh Patel", "system", "Transfer-In application submitted online", "2026-07-30"),
       entry("Payment Gateway", "system", "Online payment confirmed automatically", "2026-07-30"),
@@ -204,6 +234,19 @@ const RAW = [
     college: "College of Veterinary Science & A.H., Mhow", degree: "B.V.Sc & A.H.", year: "2024",
     mode: "Online", amount: 1500, challan: "TXN-55488", challanDate: "2026-07-18",
     submitted: "2026-07-18", status: ST.PENDING_SCRUTINY, regNo: null, returnedByApproval: true,
+    newRegDetails: {
+      firstName: "Deepak", middleName: "", lastName: "Chouhan",
+      organization: "", department: "", designation: "", sector: "Private",
+      resAddress: "12, Palasia", resAreaType: "Urban", resCity: "Indore", resWard: "Ward 34", resPostOffice: "Indore G.P.O.",
+      resState: "Madhya Pradesh", resDistrict: "Indore", resPincode: "452001",
+      proAddress: "", proAreaType: "", proState: "Madhya Pradesh", proDistrict: "", proPincode: "",
+      permAddress: "12, Palasia", permAreaType: "Urban", permCity: "Indore", permWard: "Ward 34", permPostOffice: "Indore G.P.O.",
+      permState: "Madhya Pradesh", permDistrict: "Indore", permPincode: "452001",
+      preferredAddress: "Residential Address", landline: "", mobile2: "", fax: "",
+      qualBvscUniversity: "Nanaji Deshmukh Veterinary Science University, Jabalpur",
+      qualBvscCollege: "College of Veterinary Science & A.H., Mhow", qualBvscYear: "2024",
+      gradDate: "2024-06-20", degreeId: "NDVSU/2024/00534",
+    },
     scrutiny: { checklist: { name_match: true, dob_match: true, qualification_valid: true, institution_recognized: true, address_valid: true, photo_match: true }, remarks: "All documents verified against originals. Degree certificate and address proof consistent with application form." },
     log: [
       entry("Deepak Chouhan", "system", "Application submitted online", "2026-07-18"),
@@ -248,6 +291,21 @@ const RAW = [
     college: "Nanaji Deshmukh Veterinary Science University, Jabalpur", degree: "B.V.Sc & A.H.", year: "2025",
     mode: "Online", amount: 1500, challan: "TXN-54810", challanDate: "2026-06-29",
     submitted: "2026-06-29", status: ST.FORWARDED, regNo: null,
+    newRegDetails: {
+      firstName: "Anjali", middleName: "", lastName: "Rathore",
+      organization: "Madhya Pradesh Animal Husbandry Department", department: "Veterinary Services",
+      designation: "Junior Veterinary Officer (Probationary)", sector: "Government",
+      resAddress: "Rajendra Nagar", resAreaType: "Urban", resCity: "Bhopal", resWard: "Ward 22", resPostOffice: "Bhopal G.P.O.",
+      resState: "Madhya Pradesh", resDistrict: "Bhopal", resPincode: "462001",
+      proAddress: "Veterinary Hospital, Rajendra Nagar", proAreaType: "Urban", proCity: "Bhopal", proWard: "Ward 22", proPostOffice: "Bhopal G.P.O.",
+      proState: "Madhya Pradesh", proDistrict: "Bhopal", proPincode: "462001",
+      permAddress: "Rajendra Nagar", permAreaType: "Urban", permCity: "Bhopal", permWard: "Ward 22", permPostOffice: "Bhopal G.P.O.",
+      permState: "Madhya Pradesh", permDistrict: "Bhopal", permPincode: "462001",
+      preferredAddress: "Residential Address", landline: "", mobile2: "", fax: "",
+      qualBvscUniversity: "Nanaji Deshmukh Veterinary Science University, Jabalpur",
+      qualBvscCollege: "Nanaji Deshmukh Veterinary Science University, Jabalpur", qualBvscYear: "2025",
+      gradDate: "2025-05-10", degreeId: "NDVSU/2025/00721",
+    },
     scrutiny: { checklist: { name_match: true, dob_match: true, qualification_valid: true, institution_recognized: true, address_valid: true, photo_match: true }, remarks: "Original documents tallied with uploaded scans at the counter verification. No discrepancies found." },
     log: [
       entry("Anjali Rathore", "system", "Application submitted online", "2026-06-29"),
@@ -290,6 +348,19 @@ const RAW = [
     college: "Nanaji Deshmukh Veterinary Science University, Jabalpur", degree: "B.V.Sc & A.H.", year: "2023",
     mode: "Offline", amount: 1500, challan: "CHL-86602", challanDate: "2026-06-02",
     submitted: "2026-06-01", status: ST.PENDING_DISPATCH, regNo: "MPVC/2026/01049",
+    newRegDetails: {
+      firstName: "Rahul", middleName: "", lastName: "Nema",
+      organization: "", department: "", designation: "", sector: "Private",
+      resAddress: "Saket Nagar", resAreaType: "Urban", resCity: "Bhopal", resWard: "Ward 15", resPostOffice: "Bhopal G.P.O.",
+      resState: "Madhya Pradesh", resDistrict: "Bhopal", resPincode: "462024",
+      proAddress: "", proAreaType: "", proState: "Madhya Pradesh", proDistrict: "", proPincode: "",
+      permAddress: "Saket Nagar", permAreaType: "Urban", permCity: "Bhopal", permWard: "Ward 15", permPostOffice: "Bhopal G.P.O.",
+      permState: "Madhya Pradesh", permDistrict: "Bhopal", permPincode: "462024",
+      preferredAddress: "Residential Address", landline: "", mobile2: "", fax: "",
+      qualBvscUniversity: "Nanaji Deshmukh Veterinary Science University, Jabalpur",
+      qualBvscCollege: "Nanaji Deshmukh Veterinary Science University, Jabalpur", qualBvscYear: "2023",
+      gradDate: "2023-06-01", degreeId: "NDVSU/2023/00398",
+    },
     scrutiny: { checklist: { name_match: true, dob_match: true, qualification_valid: true, institution_recognized: true, address_valid: true, photo_match: true, payment_match: true }, remarks: "All original documents verified at the counter. Recommended for approval." },
     approval: { remarks: "Verified against Scrutiny Officer's notes. Approved.", signedOn: "2026-06-08" },
     log: [
@@ -327,6 +398,20 @@ const RAW = [
     college: "College of Veterinary Science, DUVASU, Mathura", degree: "B.V.Sc & A.H.", year: "2018",
     mode: "Offline", amount: 1200, challan: "CHL-85211", challanDate: "2026-04-14",
     submitted: "2026-04-13", status: ST.DISPATCHED, regNo: "MPVC/2026/01041", tracking: "EM123456789IN",
+    newRegDetails: {
+      firstName: "Arvind", middleName: "", lastName: "Yadav",
+      organization: "", department: "", designation: "", sector: "Private",
+      resAddress: "14, Ashok Colony", resAreaType: "Urban", resCity: "Gwalior", resWard: "Ward 7", resPostOffice: "Gwalior G.P.O.",
+      resState: "Madhya Pradesh", resDistrict: "Gwalior", resPincode: "474001",
+      proAddress: "", proAreaType: "", proState: "Madhya Pradesh", proDistrict: "", proPincode: "",
+      permAddress: "Sector 62", permAreaType: "Urban", permCity: "Noida", permWard: "Sector 62", permPostOffice: "Noida S.O.",
+      permState: "Uttar Pradesh", permDistrict: "Gautam Buddh Nagar", permPincode: "201301",
+      preferredAddress: "Residential Address", landline: "", mobile2: "", fax: "",
+      qualBvscUniversity: "DUVASU, Mathura", qualBvscCollege: "College of Veterinary Science, DUVASU, Mathura", qualBvscYear: "2018",
+      gradDate: "2018-06-08", degreeId: "DUVASU/2018/00655",
+      nocPrevCouncilName: "Uttar Pradesh Veterinary Council", nocPrevRegNo: "UPVC/2018/09214", nocPrevRegDate: "2018-08-02",
+      nocDetails: "NOC issued by Uttar Pradesh Veterinary Council; applicant relocating to Gwalior, Madhya Pradesh for employment.",
+    },
     scrutiny: { checklist: { name_match: true, dob_match: true, qualification_valid: true, institution_recognized: true, address_valid: true, photo_match: true, payment_match: true }, remarks: "NOC from UP Veterinary Council verified. In order." },
     approval: { remarks: "Approved.", signedOn: "2026-04-20" },
     log: [
@@ -478,15 +563,25 @@ const RAW = [
 ];
 
 function buildApp(r) {
-  // Provisional Registration collects a different document set on the citizen form
-  // (see getChecklist("provisional") in the citizen portal) — mirror it here instead
-  // of the generic checklist so the office user sees exactly what was asked for.
+  // Each service collects a different document set on the citizen form (see
+  // getChecklist() in the citizen portal) — mirror it here so the office user sees
+  // exactly what was asked for, instead of a generic list.
   let documents;
   if (r.serviceType === "Provisional Registration") {
     documents = [
       doc("University / Course Completion Certificate", "course_completion_certificate.pdf"),
       doc("Photo", "photo.jpg"),
     ];
+    if (r.mode === "Offline") documents.push(doc("Payment Challan Copy", "challan_copy.pdf"));
+  } else if (r.serviceType === "New Registration" || r.serviceType === "Transfer-In") {
+    documents = [
+      doc("Domicile Certificate", "domicile_certificate.pdf"),
+      doc("Graduation Degree / PDC Certificate", "degree_certificate.pdf"),
+      doc("Photo (Passport size, 3x4 cm)", "photo.jpg"),
+      doc("10th Marksheet", "10th_marksheet.pdf"),
+      doc("Others", "other.pdf"),
+    ];
+    if (r.serviceType === "Transfer-In") documents.push(doc("NOC Certificate (Transfer-In)", "noc.pdf"));
     if (r.mode === "Offline") documents.push(doc("Payment Challan Copy", "challan_copy.pdf"));
   } else {
     documents = [
@@ -1106,21 +1201,37 @@ function MakerDashboard({ apps, onOpenReview, onNav }) {
 /* ============================== APPLICATION REVIEW SCREEN (MAKER) ============================== */
 function ReviewScreen({ app, apps, onBack, onForward, onReturn, onConfirmPayment, onDeclinePayment, onCloseApplication, onViewHistory }) {
   const [screenTab, setScreenTab] = useState("application");
-  const [checklist, setChecklist] = useState(() => {
-    const init = {};
-    app.checklistDef.forEach((c) => { init[c.id] = !!(app.scrutiny && app.scrutiny.checklist && app.scrutiny.checklist[c.id]); });
-    return init;
-  });
-  const [remarks, setRemarks] = useState(app.scrutiny?.remarks || "");
   const [returnOpen, setReturnOpen] = useState(false);
   const [returnRemarks, setReturnRemarks] = useState("");
   const [declineOpen, setDeclineOpen] = useState(false);
   const [declineRemarks, setDeclineRemarks] = useState("");
   const [certPreview, setCertPreview] = useState(null);
   const [docPreview, setDocPreview] = useState(null);
+  const [fieldFlags, setFieldFlags] = useState({});
 
-  const allChecked = app.checklistDef.every((c) => checklist[c.id]);
   const readOnly = app.status !== ST.PENDING_SCRUTINY;
+  const flaggedCount = Object.keys(fieldFlags).length;
+
+  function toggleFieldFlag(key, label) {
+    setFieldFlags((prev) => {
+      if (prev[key]) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: { label, comment: "" } };
+    });
+  }
+  function setFieldFlagComment(key, comment) {
+    setFieldFlags((prev) => (prev[key] ? { ...prev, [key]: { ...prev[key], comment } } : prev));
+  }
+  function openReturnWithFlags() {
+    if (flaggedCount > 0) {
+      const lines = Object.values(fieldFlags).map((flag) => `• ${flag.label}${flag.comment ? " — " + flag.comment : ""}`);
+      setReturnRemarks("Please correct the following:\n" + lines.join("\n"));
+    }
+    setReturnOpen(true);
+  }
 
   function handleCertFile(e) {
     const file = e.target.files?.[0];
@@ -1129,6 +1240,29 @@ function ReviewScreen({ app, apps, onBack, onForward, onReturn, onConfirmPayment
     reader.onload = () => setCertPreview(reader.result);
     reader.readAsDataURL(file);
   }
+
+  // Same flaggable field set shown on both the Application Details tab (so the
+  // office user can flag while verifying, without switching tabs) and the
+  // Applicant Profile tab.
+  const flaggableProfileSection = app.provisionalDetails ? (
+    <div className="rounded-xl border p-5 mb-5" style={{ borderColor: C.line, background: C.card }}>
+      {!readOnly && (
+        <div className="rounded-md px-3 py-2.5 mb-5" style={{ background: C.paperAlt }}>
+          <p className="text-xs leading-relaxed" style={{ color: C.inkSoft, fontFamily: F.body }}>
+            Flag any field that doesn't match the citizen's documents. A comment is optional — flagging any field blocks
+            forwarding; use Return to Applicant below to send it back for correction.
+          </p>
+        </div>
+      )}
+      <ProvisionalProfileFields
+        app={app}
+        flaggable={!readOnly}
+        flags={fieldFlags}
+        onToggleFlag={toggleFieldFlag}
+        onFlagComment={setFieldFlagComment}
+      />
+    </div>
+  ) : null;
 
   return (
     <div>
@@ -1163,7 +1297,9 @@ function ReviewScreen({ app, apps, onBack, onForward, onReturn, onConfirmPayment
       </div>
 
       {screenTab === "application" ? (
-        <div className="grid lg:grid-cols-2 gap-5">
+        <>
+          {flaggableProfileSection}
+          <div className="grid lg:grid-cols-2 gap-5">
           <div className="rounded-xl border p-5" style={{ borderColor: C.line, background: C.card }}>
             <FieldGroup icon={IndianRupee} title="Payment Details">
               <Field label="Mode" value={app.mode} />
@@ -1201,7 +1337,7 @@ function ReviewScreen({ app, apps, onBack, onForward, onReturn, onConfirmPayment
           {/* Verification / action */}
           <div className="rounded-xl border p-5" style={{ borderColor: C.line, background: C.card }}>
             {app.status === ST.PENDING_PAYMENT ? (
-              /* Payment not yet confirmed — scrutiny checklist isn't relevant until it is. */
+              /* Payment not yet confirmed — verification isn't relevant until it is. */
               <div>
                 <div className="rounded-md px-3 py-2.5 mb-4 flex items-start gap-2.5" style={{ background: C.paperAlt }}>
                   <AlertTriangle size={15} color={C.rust} className="mt-0.5 shrink-0" />
@@ -1218,36 +1354,12 @@ function ReviewScreen({ app, apps, onBack, onForward, onReturn, onConfirmPayment
             ) : (
               <>
                 <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: C.ink, fontFamily: F.body }}>
-                  <ClipboardCheck size={16} color={C.seal} /> Field-by-Field Verification
+                  <ClipboardCheck size={16} color={C.seal} /> Verification & Action
                 </h3>
-                <div className="space-y-2">
-                  {app.checklistDef.map((c) => (
-                    <label key={c.id} className="flex items-start gap-2.5 rounded-md px-2 py-1.5 hover:bg-black/[0.02] cursor-pointer">
-                      <input
-                        type="checkbox"
-                        disabled={readOnly}
-                        checked={!!checklist[c.id]}
-                        onChange={(e) => setChecklist((prev) => ({ ...prev, [c.id]: e.target.checked }))}
-                        className="mt-0.5"
-                        style={{ accentColor: C.seal }}
-                      />
-                      <span className="text-sm" style={{ color: C.ink, fontFamily: F.body }}>{c.label}</span>
-                    </label>
-                  ))}
-                </div>
-
-                <div className="mt-4">
-                  <label className="text-xs font-medium block mb-1.5" style={{ color: C.inkSoft, fontFamily: F.body }}>Scrutiny Remarks</label>
-                  <textarea
-                    disabled={readOnly}
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    rows={3}
-                    placeholder="Note verification observations here…"
-                    className="w-full rounded-md border px-3 py-2 text-sm outline-none disabled:bg-gray-50"
-                    style={{ borderColor: C.line, fontFamily: F.body, color: C.ink }}
-                  />
-                </div>
+                <p className="text-xs leading-relaxed" style={{ color: C.muted, fontFamily: F.body }}>
+                  Review the applicant's details above and flag any field that doesn't match the uploaded documents. The
+                  application can only be returned to the applicant if at least one field is flagged; otherwise, forward it.
+                </p>
 
                 {app.status === ST.PENDING_SCRUTINY ? (
                   <>
@@ -1255,17 +1367,23 @@ function ReviewScreen({ app, apps, onBack, onForward, onReturn, onConfirmPayment
                       <Button
                         variant="forest"
                         icon={Send}
-                        disabled={!allChecked}
-                        onClick={() => onForward(app.id, { checklist, remarks })}
+                        disabled={flaggedCount > 0}
+                        onClick={() => onForward(app.id, { checklist: {}, remarks: "" })}
                       >
                         Forward to Approving Authority
                       </Button>
-                      <Button variant="rust" icon={Undo2} onClick={() => setReturnOpen(true)}>
+                      <Button variant="rust" icon={Undo2} disabled={flaggedCount === 0} onClick={openReturnWithFlags}>
                         Return to Applicant
                       </Button>
                     </div>
-                    {!allChecked && (
-                      <p className="text-xs mt-2" style={{ color: C.rust, fontFamily: F.body }}>All checklist items must be verified before forwarding.</p>
+                    {flaggedCount > 0 ? (
+                      <p className="text-xs mt-2" style={{ color: C.rust, fontFamily: F.body }}>
+                        {flaggedCount} field{flaggedCount > 1 ? "s" : ""} flagged as incorrect — this application must be returned to the applicant and cannot be forwarded.
+                      </p>
+                    ) : (
+                      <p className="text-xs mt-2" style={{ color: C.muted, fontFamily: F.body }}>
+                        No fields flagged — flag a field above to return this application to the applicant.
+                      </p>
                     )}
                   </>
                 ) : app.status === ST.PENDING_DISPATCH ? (
@@ -1305,31 +1423,36 @@ function ReviewScreen({ app, apps, onBack, onForward, onReturn, onConfirmPayment
             )}
           </div>
         </div>
+        </>
       ) : (
         <>
           <ApplicantHistoryPanel apps={apps} app={app} />
-          <div className="rounded-xl border p-5" style={{ borderColor: C.line, background: C.card }}>
-            {app.provisionalDetails ? (
-              <ProvisionalProfileFields app={app} />
-            ) : (
-              <>
-                <FieldGroup icon={User2Icon} title="Personal Details">
-                  <Field label="Full Name" value={app.applicantName} />
-                  <Field label="Date of Birth" value={fmtDate(app.dob)} />
-                  <Field label="Father's Name" value={app.fatherName} />
-                  <Field label="Gender" value={app.gender} />
-                  <Field label="Mobile" value={app.mobile} icon={Phone} />
-                  <Field label="Email" value={app.email} icon={Mail} />
-                  <Field label="Address" value={app.address} icon={MapPin} wide />
-                </FieldGroup>
-                <FieldGroup icon={GraduationCap} title="Qualification & Institution">
-                  <Field label="Degree" value={app.degree} />
-                  <Field label="Year of Passing" value={app.year} />
-                  <Field label="College / Institution" value={app.college} icon={Building2} wide />
-                </FieldGroup>
-              </>
-            )}
-          </div>
+          {app.provisionalDetails ? (
+            flaggableProfileSection
+          ) : (
+            <div className="rounded-xl border p-5" style={{ borderColor: C.line, background: C.card }}>
+              {app.newRegDetails ? (
+                <NewRegistrationProfileFields app={app} />
+              ) : (
+                <>
+                  <FieldGroup icon={User2Icon} title="Personal Details">
+                    <Field label="Full Name" value={app.applicantName} />
+                    <Field label="Date of Birth" value={fmtDate(app.dob)} />
+                    <Field label="Father's Name" value={app.fatherName} />
+                    <Field label="Gender" value={app.gender} />
+                    <Field label="Mobile" value={app.mobile} icon={Phone} />
+                    <Field label="Email" value={app.email} icon={Mail} />
+                    <Field label="Address" value={app.address} icon={MapPin} wide />
+                  </FieldGroup>
+                  <FieldGroup icon={GraduationCap} title="Qualification & Institution">
+                    <Field label="Degree" value={app.degree} />
+                    <Field label="Year of Passing" value={app.year} />
+                    <Field label="College / Institution" value={app.college} icon={Building2} wide />
+                  </FieldGroup>
+                </>
+              )}
+            </div>
+          )}
         </>
       )}
 
@@ -1402,13 +1525,145 @@ function Field({ label, value, wide, mono }) {
   );
 }
 
-// The Provisional Registration citizen form collects a much larger, structured field
-// set (split name, dual addresses, dual mobiles, roll/enrollment numbers, etc. — see
-// app.provisionalDetails) than the generic application. This renders that complete
-// set on the Applicant Profile tab so the office user isn't missing any of it.
-function ProvisionalProfileFields({ app }) {
+// Review-mode rendering for a profile field group: each field gets its own "Flag issue"
+// control so the Scrutiny Officer can mark specific fields as incorrect (with an optional
+// comment) instead of returning the whole application on a single generic remark.
+function FlaggableFieldGroup({ icon: Icon, title, children }) {
+  return (
+    <div className="mb-6">
+      <div className="flex items-center gap-1.5 mb-2">
+        <Icon size={13} color={C.muted} />
+        <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: C.muted, fontFamily: F.body }}>{title}</span>
+      </div>
+      <div className="rounded-lg border divide-y" style={{ borderColor: C.line }}>{children}</div>
+    </div>
+  );
+}
+function FlaggableField({ fieldKey, label, value, mono, flag, onToggleFlag, onFlagComment }) {
+  const flagged = !!flag;
+  return (
+    <div className="px-3.5 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-wide" style={{ color: C.muted, fontFamily: F.body }}>{label}</p>
+          <p className="text-sm font-medium mt-0.5" style={{ color: C.ink, fontFamily: mono ? F.mono : F.body }}>{value}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onToggleFlag(fieldKey, label)}
+          className="shrink-0 flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium"
+          style={flagged
+            ? { borderColor: C.rust, color: C.rust, background: C.rustSoft }
+            : { borderColor: C.line, color: C.inkSoft, background: "transparent" }}
+        >
+          {flagged ? <CheckCircle2 size={13} /> : <Flag size={13} />}
+          {flagged ? "Flagged" : "Flag issue"}
+        </button>
+      </div>
+      {flagged && (
+        <input
+          type="text"
+          value={flag.comment}
+          onChange={(e) => onFlagComment(fieldKey, e.target.value)}
+          placeholder="What needs to be corrected here? (optional)"
+          className="w-full mt-2 rounded-md border px-3 py-2 text-sm outline-none"
+          style={{ borderColor: C.line, fontFamily: F.body, color: C.ink }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Every field here — labels and grouping included — matches the citizen-facing
+// Provisional Registration application form field-for-field (see
+// ScreenProvisionalAppForm in mpsvc-prototype.jsx), so the office user reviews exactly
+// what the citizen submitted, nothing summarized or renamed. Shown on both the
+// Application Details and Applicant Profile tabs of the Scrutiny Officer's review screen.
+function ProvisionalProfileFields({ app, flaggable, flags, onToggleFlag, onFlagComment }) {
   const pd = app.provisionalDetails;
   if (!pd) return null;
+
+  if (flaggable) {
+    const f = (fieldKey, label, value, mono) => (
+      <FlaggableField
+        key={fieldKey}
+        fieldKey={fieldKey}
+        label={label}
+        value={value}
+        mono={mono}
+        flag={flags[fieldKey]}
+        onToggleFlag={onToggleFlag}
+        onFlagComment={onFlagComment}
+      />
+    );
+    return (
+      <>
+        <FlaggableFieldGroup icon={User2Icon} title="Personal Details">
+          {f("firstName", "First Name", pd.firstName)}
+          {f("middleName", "Middle Name", pd.middleName || "—")}
+          {f("lastName", "Last Name", pd.lastName)}
+          {f("fatherName", "Father Name", app.fatherName)}
+          {f("dob", "Date Of Birth", fmtDate(app.dob))}
+          {f("gender", "Gender", app.gender)}
+        </FlaggableFieldGroup>
+        <FlaggableFieldGroup icon={MapPin} title="Residential Address">
+          {f("resAreaType", "Area Type", pd.resAreaType)}
+          {f("resState", "State", pd.resState)}
+          {f("resDistrict", "District", pd.resDistrict)}
+          {pd.resAreaType === "Rural" ? (
+            <>
+              {f("resBlock", "Block", pd.resBlock)}
+              {f("resPanchayat", "Panchayat", pd.resPanchayat)}
+              {f("resGram", "Gram", pd.resGram)}
+            </>
+          ) : (
+            <>
+              {f("resCity", "City", pd.resCity)}
+              {f("resWard", "Ward", pd.resWard)}
+            </>
+          )}
+          {f("resPincode", "Pin Code", pd.resPincode, true)}
+          {f("resPostOffice", "Post Office", pd.resPostOffice)}
+          {f("resAddress", "Complete Address", pd.resAddress)}
+        </FlaggableFieldGroup>
+        <FlaggableFieldGroup icon={MapPin} title="Permanent Address">
+          {f("permAreaType", "Area Type", pd.permAreaType)}
+          {f("permState", "State", pd.permState)}
+          {f("permDistrict", "District", pd.permDistrict)}
+          {pd.permAreaType === "Rural" ? (
+            <>
+              {f("permBlock", "Block", pd.permBlock)}
+              {f("permPanchayat", "Panchayat", pd.permPanchayat)}
+              {f("permGram", "Gram", pd.permGram)}
+            </>
+          ) : (
+            <>
+              {f("permCity", "City", pd.permCity)}
+              {f("permWard", "Ward", pd.permWard)}
+            </>
+          )}
+          {f("permPincode", "Pin Code", pd.permPincode, true)}
+          {f("permPostOffice", "Post Office", pd.permPostOffice)}
+          {f("permAddress", "Complete Address", pd.permAddress)}
+        </FlaggableFieldGroup>
+        <FlaggableFieldGroup icon={Phone} title="Contact Details">
+          {f("preferredAddress", "Preferred Address", pd.preferredAddress)}
+          {f("email", "Email Id", app.email)}
+          {f("mobile1", "Primary Mobile No.", pd.mobile1)}
+          {f("mobile2", "Alternate Mobile Number", pd.mobile2 || "—")}
+        </FlaggableFieldGroup>
+        <FlaggableFieldGroup icon={GraduationCap} title="Qualification">
+          {f("rollNo", "Roll No", pd.rollNo, true)}
+          {f("universityEnrollmentNo", "University Enrollment No", pd.universityEnrollmentNo, true)}
+          {f("provDegreeName", "Degree Name", pd.provDegreeName)}
+          {f("provUniversityName", "Name of University", pd.provUniversityName)}
+          {f("college", "Name of College", app.college)}
+          {f("provPassingYear", "Passing Year", pd.provPassingYear)}
+        </FlaggableFieldGroup>
+      </>
+    );
+  }
+
   return (
     <>
       <FieldGroup icon={User2Icon} title="Personal Details">
@@ -1473,6 +1728,81 @@ function ProvisionalProfileFields({ app }) {
         <Field label="Name of College" value={app.college} wide />
         <Field label="Passing Year" value={pd.provPassingYear} />
       </FieldGroup>
+    </>
+  );
+}
+
+// The New Registration / Transfer-In citizen form collects an even larger field set
+// than Provisional — Organization/Department/Sector, three full addresses
+// (Residential/Professional/Permanent), a Qualification table, and NOC details when
+// it's a transfer — see app.newRegDetails. Renders that complete set here so the
+// office user sees exactly what the citizen submitted, not a generic summary.
+function NewRegistrationProfileFields({ app }) {
+  const nd = app.newRegDetails;
+  if (!nd) return null;
+  const addressGroup = (icon, title, prefix) => (
+    <FieldGroup icon={icon} title={title}>
+      <Field label="Area Type" value={nd[`${prefix}AreaType`] || "—"} />
+      <Field label="State" value={nd[`${prefix}State`] || "—"} />
+      <Field label="District" value={nd[`${prefix}District`] || "—"} />
+      {nd[`${prefix}AreaType`] === "Rural" ? (
+        <>
+          <Field label="Block" value={nd[`${prefix}Block`] || "—"} />
+          <Field label="Panchayat" value={nd[`${prefix}Panchayat`] || "—"} />
+          <Field label="Gram" value={nd[`${prefix}Gram`] || "—"} />
+        </>
+      ) : (
+        <>
+          <Field label="City" value={nd[`${prefix}City`] || "—"} />
+          <Field label="Ward" value={nd[`${prefix}Ward`] || "—"} />
+        </>
+      )}
+      <Field label="Pin Code" value={nd[`${prefix}Pincode`] || "—"} mono />
+      <Field label="Post Office" value={nd[`${prefix}PostOffice`] || "—"} />
+      <Field label="Complete Address" value={nd[`${prefix}Address`] || "—"} wide />
+    </FieldGroup>
+  );
+  return (
+    <>
+      <FieldGroup icon={User2Icon} title="Personal Details">
+        <Field label="First Name" value={nd.firstName} />
+        <Field label="Middle Name" value={nd.middleName || "—"} />
+        <Field label="Last Name" value={nd.lastName} />
+        <Field label="Father Name" value={app.fatherName} />
+        <Field label="Date Of Birth" value={fmtDate(app.dob)} />
+        <Field label="Gender" value={app.gender} />
+        <Field label="Organization" value={nd.organization || "—"} />
+        <Field label="Department" value={nd.department || "—"} />
+        <Field label="Designation" value={nd.designation || "—"} />
+        <Field label="Sector" value={nd.sector || "—"} />
+      </FieldGroup>
+      {addressGroup(MapPin, "Residential Address", "res")}
+      {addressGroup(Building2, "Professional Address", "pro")}
+      {addressGroup(MapPin, "Permanent Address", "perm")}
+      <FieldGroup icon={Phone} title="Contact Details">
+        <Field label="Preferred Address" value={nd.preferredAddress || "—"} />
+        <Field label="Land-Line No." value={nd.landline || "—"} />
+        <Field label="Primary Mobile No." value={app.mobile} />
+        <Field label="Alternate Mobile Number" value={nd.mobile2 || "—"} />
+        <Field label="Fax No." value={nd.fax || "—"} />
+        <Field label="Email Id" value={app.email} />
+      </FieldGroup>
+      <FieldGroup icon={GraduationCap} title="Qualification">
+        <Field label="Degree Name" value="B.V.SC.& A.H." />
+        <Field label="Name of University" value={nd.qualBvscUniversity} wide />
+        <Field label="Name of College" value={nd.qualBvscCollege || app.college} wide />
+        <Field label="Passing Year" value={nd.qualBvscYear} />
+        <Field label="Graduation Degree / PDC Date" value={fmtDate(nd.gradDate)} />
+        <Field label="Degree Id" value={nd.degreeId} mono />
+      </FieldGroup>
+      {nd.nocPrevCouncilName && (
+        <FieldGroup icon={ShieldCheck} title="Previous State Council Details (NOC)">
+          <Field label="Previous State Council Name" value={nd.nocPrevCouncilName} />
+          <Field label="Previous Registration Number" value={nd.nocPrevRegNo} mono />
+          <Field label="Previous Registration Date" value={fmtDate(nd.nocPrevRegDate)} />
+          <Field label="Details" value={nd.nocDetails} wide />
+        </FieldGroup>
+      )}
     </>
   );
 }
@@ -1759,6 +2089,8 @@ function ApprovalScreen({ app, apps, onBack, onApprove, onSendBack, onReject, on
           <div className="rounded-xl border p-5" style={{ borderColor: C.line, background: C.card }}>
             {app.provisionalDetails ? (
               <ProvisionalProfileFields app={app} />
+            ) : app.newRegDetails ? (
+              <NewRegistrationProfileFields app={app} />
             ) : (
               <>
                 <FieldGroup icon={User2Icon} title="Personal Details">
@@ -2281,6 +2613,8 @@ function SearchReportsScreen({ apps, onOpenHistory }) {
             <div className="rounded-xl border p-5" style={{ borderColor: C.line, background: C.card }}>
               {profileApp.provisionalDetails ? (
                 <ProvisionalProfileFields app={profileApp} />
+              ) : profileApp.newRegDetails ? (
+                <NewRegistrationProfileFields app={profileApp} />
               ) : (
                 <>
                   <FieldGroup icon={User2Icon} title="Personal Details">
