@@ -6,6 +6,7 @@ import {
   Calendar, X, Menu, IndianRupee, Stamp, Paperclip, GraduationCap, Building2, Phone,
   Mail, MapPin, BadgeCheck, Circle, PackageCheck, ArrowLeft, RotateCcw,
   KeyRound, Fingerprint, Filter, SlidersHorizontal, FileSpreadsheet, Plus, FileImage, Flag,
+  QrCode,
 } from "lucide-react";
 
 /* ============================== TOKENS ============================== */
@@ -116,6 +117,46 @@ function fmtDateTime(d) {
 }
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+// The digital certificate is generated the moment an application is approved (as soon as
+// app.regNo is assigned by approveAndSign) — it exists independently of the physical
+// sealed-certificate dispatch track, which some service types additionally go through.
+function certNoFor(app) {
+  return "MP-CERT-" + String(app.regNo || "").replace(/\//g, "-");
+}
+function printCertificate(app) {
+  const win = window.open("", "_blank", "width=760,height=900");
+  if (!win) return; // popup blocked
+  win.document.write(`<!doctype html><html><head><title>MPSVC Digital Certificate — ${escapeHtml(app.applicantName)}</title><style>
+    body{font-family:Arial,sans-serif;color:#20242B;padding:32px;}
+    .cert{border:2px solid #1F3A5F;border-radius:8px;overflow:hidden;max-width:560px;margin:0 auto;}
+    .cert-head{background:#1F3A5F;color:#fff;padding:16px 20px;font-size:15px;font-weight:700;}
+    .cert-body{padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    .cert-body div{display:flex;flex-direction:column;gap:2px;}
+    .cert-body span{font-size:10.5px;color:#666;text-transform:uppercase;letter-spacing:0.3px;}
+    .cert-body strong{font-size:13.5px;}
+    .cert-foot{padding:14px 20px;border-top:1px dashed #ccc;font-size:11px;color:#666;}
+    .banner{max-width:560px;margin:0 auto 16px;font-size:11.5px;color:#8A5A00;background:#FFF4E5;border:1px solid #F0B961;border-radius:6px;padding:10px 14px;}
+    @media print{ body{padding:0;} .banner{display:none;} }
+  </style></head><body>
+    <div class="banner">Non-sealed digital certificate — no physical signature or council seal. Where a sealed physical certificate is required, it is tracked and dispatched separately.</div>
+    <div class="cert">
+      <div class="cert-head">MPSVC &mdash; ${escapeHtml(app.serviceType)} &mdash; Digital Certificate</div>
+      <div class="cert-body">
+        <div><span>Certificate No.</span><strong>${escapeHtml(certNoFor(app))}</strong></div>
+        <div><span>Registration No.</span><strong>${escapeHtml(app.regNo || "—")}</strong></div>
+        <div><span>Name</span><strong>${escapeHtml(app.applicantName)}</strong></div>
+        <div><span>Service</span><strong>${escapeHtml(app.serviceType)}</strong></div>
+        <div><span>Issue Date</span><strong>${escapeHtml(fmtDate(app.approval?.signedOn))}</strong></div>
+        <div><span>Approving Authority</span><strong>Registrar, MPSVC (eSigned)</strong></div>
+      </div>
+      <div class="cert-foot">Non-Sealed &mdash; Digital Copy. Verify this certificate on the MPSVC citizen portal using the Registration No. above.</div>
+    </div>
+  </body></html>`);
+  win.document.close();
+  win.focus();
+  win.print();
 }
 
 /* ============================== SEED DATA ============================== */
@@ -1208,6 +1249,7 @@ function ReviewScreen({ app, apps, onBack, onForward, onReturn, onConfirmPayment
   const [certPreview, setCertPreview] = useState(null);
   const [docPreview, setDocPreview] = useState(null);
   const [fieldFlags, setFieldFlags] = useState({});
+  const [digitalCertOpen, setDigitalCertOpen] = useState(false);
 
   const readOnly = app.status !== ST.PENDING_SCRUTINY;
   const flaggedCount = Object.keys(fieldFlags).length;
@@ -1249,8 +1291,8 @@ function ReviewScreen({ app, apps, onBack, onForward, onReturn, onConfirmPayment
       {!readOnly && (
         <div className="rounded-md px-3 py-2.5 mb-5" style={{ background: C.paperAlt }}>
           <p className="text-xs leading-relaxed" style={{ color: C.inkSoft, fontFamily: F.body }}>
-            Flag any field that doesn't match the citizen's documents. A comment is optional — flagging any field blocks
-            forwarding; use Return to Applicant below to send it back for correction.
+            Flag any field or uploaded document that's incorrect or unclear. A comment is optional — flagging anything
+            blocks forwarding; use Return to Applicant below to send it back for correction.
           </p>
         </div>
       )}
@@ -1281,6 +1323,9 @@ function ReviewScreen({ app, apps, onBack, onForward, onReturn, onConfirmPayment
         </div>
         <div className="flex items-center gap-2">
           <Badge status={app.status} />
+          {app.regNo && (
+            <Button variant="ghost" size="sm" icon={ShieldCheck} onClick={() => setDigitalCertOpen(true)}>Certificate</Button>
+          )}
           <Button variant="ghost" size="sm" icon={HistoryIcon} onClick={onViewHistory}>Audit Trail</Button>
         </div>
       </div>
@@ -1312,25 +1357,54 @@ function ReviewScreen({ app, apps, onBack, onForward, onReturn, onConfirmPayment
               <Paperclip size={16} color={C.seal} /> Uploaded Documents
             </h3>
             <div className="space-y-2">
-              {app.documents.map((d) => (
-                <button
-                  key={d.fileName}
-                  onClick={() => setDocPreview(d)}
-                  className="w-full flex items-center justify-between rounded-md border px-3 py-2.5 text-left hover:bg-black/[0.02]"
-                  style={{ borderColor: C.line }}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-9 rounded flex items-center justify-center shrink-0" style={{ background: C.paperAlt, border: `1px solid ${C.line}` }}>
-                      <FileText size={14} color={C.muted} />
+              {app.documents.map((d) => {
+                const flagKey = `doc:${d.fileName}`;
+                const flag = fieldFlags[flagKey];
+                return (
+                  <div key={d.fileName} className="rounded-md border px-3 py-2.5" style={{ borderColor: C.line }}>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setDocPreview(d)}
+                        className="flex-1 min-w-0 flex items-center justify-between gap-2.5 text-left hover:bg-black/[0.02] rounded-md"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-9 rounded flex items-center justify-center shrink-0" style={{ background: C.paperAlt, border: `1px solid ${C.line}` }}>
+                            <FileText size={14} color={C.muted} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm truncate" style={{ color: C.ink, fontFamily: F.body }}>{d.label}</p>
+                            <p className="text-[11px] truncate" style={{ color: C.muted, fontFamily: F.mono }}>{d.fileName}</p>
+                          </div>
+                        </div>
+                        <Eye size={15} color={C.muted} className="shrink-0" />
+                      </button>
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          onClick={() => toggleFieldFlag(flagKey, `Document — ${d.label}`)}
+                          className="shrink-0 flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium"
+                          style={flag
+                            ? { borderColor: C.rust, color: C.rust, background: C.rustSoft }
+                            : { borderColor: C.line, color: C.inkSoft, background: "transparent" }}
+                        >
+                          {flag ? <CheckCircle2 size={13} /> : <Flag size={13} />}
+                          {flag ? "Flagged" : "Flag issue"}
+                        </button>
+                      )}
                     </div>
-                    <div>
-                      <p className="text-sm" style={{ color: C.ink, fontFamily: F.body }}>{d.label}</p>
-                      <p className="text-[11px]" style={{ color: C.muted, fontFamily: F.mono }}>{d.fileName}</p>
-                    </div>
+                    {flag && (
+                      <input
+                        type="text"
+                        value={flag.comment}
+                        onChange={(e) => setFieldFlagComment(flagKey, e.target.value)}
+                        placeholder="What's wrong with this document? (optional)"
+                        className="w-full mt-2 rounded-md border px-3 py-2 text-sm outline-none"
+                        style={{ borderColor: C.line, fontFamily: F.body, color: C.ink }}
+                      />
+                    )}
                   </div>
-                  <Eye size={15} color={C.muted} />
-                </button>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -1357,8 +1431,9 @@ function ReviewScreen({ app, apps, onBack, onForward, onReturn, onConfirmPayment
                   <ClipboardCheck size={16} color={C.seal} /> Verification & Action
                 </h3>
                 <p className="text-xs leading-relaxed" style={{ color: C.muted, fontFamily: F.body }}>
-                  Review the applicant's details above and flag any field that doesn't match the uploaded documents. The
-                  application can only be returned to the applicant if at least one field is flagged; otherwise, forward it.
+                  Review the applicant's details and uploaded documents above, and flag anything that's incorrect or
+                  unclear. The application can only be returned to the applicant if at least one item is flagged;
+                  otherwise, forward it.
                 </p>
 
                 {app.status === ST.PENDING_SCRUTINY ? (
@@ -1378,11 +1453,11 @@ function ReviewScreen({ app, apps, onBack, onForward, onReturn, onConfirmPayment
                     </div>
                     {flaggedCount > 0 ? (
                       <p className="text-xs mt-2" style={{ color: C.rust, fontFamily: F.body }}>
-                        {flaggedCount} field{flaggedCount > 1 ? "s" : ""} flagged as incorrect — this application must be returned to the applicant and cannot be forwarded.
+                        {flaggedCount} item{flaggedCount > 1 ? "s" : ""} flagged as incorrect — this application must be returned to the applicant and cannot be forwarded.
                       </p>
                     ) : (
                       <p className="text-xs mt-2" style={{ color: C.muted, fontFamily: F.body }}>
-                        No fields flagged — flag a field above to return this application to the applicant.
+                        Nothing flagged — flag a field or document above to return this application to the applicant.
                       </p>
                     )}
                   </>
@@ -1491,6 +1566,8 @@ function ReviewScreen({ app, apps, onBack, onForward, onReturn, onConfirmPayment
         onChange={setDeclineRemarks}
         onSubmit={() => { onDeclinePayment(app.id, declineRemarks); setDeclineOpen(false); }}
       />
+
+      <CertificateModal app={app} open={digitalCertOpen} onClose={() => setDigitalCertOpen(false)} />
     </div>
   );
 }
@@ -1525,9 +1602,11 @@ function Field({ label, value, wide, mono }) {
   );
 }
 
-// Review-mode rendering for a profile field group: each field gets its own "Flag issue"
-// control so the Scrutiny Officer can mark specific fields as incorrect (with an optional
-// comment) instead of returning the whole application on a single generic remark.
+// Review-mode rendering for a profile field group: each field gets its own compact
+// "Flag issue" toggle so the Scrutiny Officer can mark specific fields as incorrect
+// (with an optional comment) instead of returning the whole application on a single
+// generic remark. Laid out as a responsive grid (not one field per full-width row) so
+// short fields like "Gender" or "Pin Code" don't each eat the full card width.
 function FlaggableFieldGroup({ icon: Icon, title, children }) {
   return (
     <div className="mb-6">
@@ -1535,29 +1614,30 @@ function FlaggableFieldGroup({ icon: Icon, title, children }) {
         <Icon size={13} color={C.muted} />
         <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: C.muted, fontFamily: F.body }}>{title}</span>
       </div>
-      <div className="rounded-lg border divide-y" style={{ borderColor: C.line }}>{children}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">{children}</div>
     </div>
   );
 }
-function FlaggableField({ fieldKey, label, value, mono, flag, onToggleFlag, onFlagComment }) {
+function FlaggableField({ fieldKey, label, value, mono, wide, flag, onToggleFlag, onFlagComment }) {
   const flagged = !!flag;
   return (
-    <div className="px-3.5 py-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-wide" style={{ color: C.muted, fontFamily: F.body }}>{label}</p>
-          <p className="text-sm font-medium mt-0.5" style={{ color: C.ink, fontFamily: mono ? F.mono : F.body }}>{value}</p>
+    <div
+      className={`rounded-md border px-2.5 py-2 ${wide ? "col-span-2 sm:col-span-3 lg:col-span-4" : ""}`}
+      style={{ borderColor: flagged ? C.rust : C.line, background: flagged ? C.rustSoft : "transparent" }}
+    >
+      <div className="flex items-start justify-between gap-1.5">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-wide truncate" style={{ color: C.muted, fontFamily: F.body }}>{label}</p>
+          <p className="text-sm font-medium mt-0.5 truncate" title={value} style={{ color: C.ink, fontFamily: mono ? F.mono : F.body }}>{value}</p>
         </div>
         <button
           type="button"
           onClick={() => onToggleFlag(fieldKey, label)}
-          className="shrink-0 flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium"
-          style={flagged
-            ? { borderColor: C.rust, color: C.rust, background: C.rustSoft }
-            : { borderColor: C.line, color: C.inkSoft, background: "transparent" }}
+          title={flagged ? "Flagged as incorrect — click to unflag" : "Flag issue"}
+          className="shrink-0 rounded p-1 hover:bg-black/[0.04]"
+          style={{ color: flagged ? C.rust : C.muted }}
         >
-          {flagged ? <CheckCircle2 size={13} /> : <Flag size={13} />}
-          {flagged ? "Flagged" : "Flag issue"}
+          {flagged ? <CheckCircle2 size={14} /> : <Flag size={14} />}
         </button>
       </div>
       {flagged && (
@@ -1565,9 +1645,9 @@ function FlaggableField({ fieldKey, label, value, mono, flag, onToggleFlag, onFl
           type="text"
           value={flag.comment}
           onChange={(e) => onFlagComment(fieldKey, e.target.value)}
-          placeholder="What needs to be corrected here? (optional)"
-          className="w-full mt-2 rounded-md border px-3 py-2 text-sm outline-none"
-          style={{ borderColor: C.line, fontFamily: F.body, color: C.ink }}
+          placeholder="What needs correction? (optional)"
+          className="w-full mt-1.5 rounded border px-2 py-1 text-xs outline-none"
+          style={{ borderColor: C.line, fontFamily: F.body, color: C.ink, background: C.card }}
         />
       )}
     </div>
@@ -1584,13 +1664,14 @@ function ProvisionalProfileFields({ app, flaggable, flags, onToggleFlag, onFlagC
   if (!pd) return null;
 
   if (flaggable) {
-    const f = (fieldKey, label, value, mono) => (
+    const f = (fieldKey, label, value, mono, wide) => (
       <FlaggableField
         key={fieldKey}
         fieldKey={fieldKey}
         label={label}
         value={value}
         mono={mono}
+        wide={wide}
         flag={flags[fieldKey]}
         onToggleFlag={onToggleFlag}
         onFlagComment={onFlagComment}
@@ -1624,7 +1705,7 @@ function ProvisionalProfileFields({ app, flaggable, flags, onToggleFlag, onFlagC
           )}
           {f("resPincode", "Pin Code", pd.resPincode, true)}
           {f("resPostOffice", "Post Office", pd.resPostOffice)}
-          {f("resAddress", "Complete Address", pd.resAddress)}
+          {f("resAddress", "Complete Address", pd.resAddress, false, true)}
         </FlaggableFieldGroup>
         <FlaggableFieldGroup icon={MapPin} title="Permanent Address">
           {f("permAreaType", "Area Type", pd.permAreaType)}
@@ -1644,7 +1725,7 @@ function ProvisionalProfileFields({ app, flaggable, flags, onToggleFlag, onFlagC
           )}
           {f("permPincode", "Pin Code", pd.permPincode, true)}
           {f("permPostOffice", "Post Office", pd.permPostOffice)}
-          {f("permAddress", "Complete Address", pd.permAddress)}
+          {f("permAddress", "Complete Address", pd.permAddress, false, true)}
         </FlaggableFieldGroup>
         <FlaggableFieldGroup icon={Phone} title="Contact Details">
           {f("preferredAddress", "Preferred Address", pd.preferredAddress)}
@@ -1656,8 +1737,8 @@ function ProvisionalProfileFields({ app, flaggable, flags, onToggleFlag, onFlagC
           {f("rollNo", "Roll No", pd.rollNo, true)}
           {f("universityEnrollmentNo", "University Enrollment No", pd.universityEnrollmentNo, true)}
           {f("provDegreeName", "Degree Name", pd.provDegreeName)}
-          {f("provUniversityName", "Name of University", pd.provUniversityName)}
-          {f("college", "Name of College", app.college)}
+          {f("provUniversityName", "Name of University", pd.provUniversityName, false, true)}
+          {f("college", "Name of College", app.college, false, true)}
           {f("provPassingYear", "Passing Year", pd.provPassingYear)}
         </FlaggableFieldGroup>
       </>
@@ -1903,6 +1984,55 @@ function RemarksModal({ open, onClose, title, description, actionLabel, actionVa
   );
 }
 
+// Available to both the Scrutiny Officer and Approving Authority the moment an
+// application is approved (app.regNo is set) — regardless of where it currently stands
+// on the physical sealed-certificate dispatch track, since the two are independent.
+function CertificateModal({ app, open, onClose }) {
+  if (!app) return null;
+  return (
+    <Modal open={open} onClose={onClose} title="Digital Certificate">
+      <div className="rounded-md px-3 py-2.5 mb-4 flex items-start gap-2.5" style={{ background: C.sealSoft }}>
+        <ShieldCheck size={15} color={C.seal} className="mt-0.5 shrink-0" />
+        <p className="text-xs leading-relaxed" style={{ color: C.inkSoft, fontFamily: F.body }}>
+          This is a non-sealed digital certificate, generated automatically as soon as the application was approved.
+          It's available to the applicant, Scrutiny Officer, and Approving Authority at any time — separate from any
+          sealed physical certificate tracked under Certificate Dispatch.
+        </p>
+      </div>
+      <div className="rounded-lg overflow-hidden border" style={{ borderColor: C.navy }}>
+        <div className="px-4 py-3 flex items-center gap-2" style={{ background: C.navy, color: "#fff" }}>
+          <ShieldCheck size={17} />
+          <span className="text-sm font-semibold" style={{ fontFamily: F.body }}>MPSVC — {app.serviceType} — Digital Certificate</span>
+        </div>
+        <div className="grid grid-cols-2 gap-3.5 p-4">
+          <CertField label="Certificate No." value={certNoFor(app)} />
+          <CertField label="Registration No." value={app.regNo || "—"} />
+          <CertField label="Name" value={app.applicantName} />
+          <CertField label="Service" value={app.serviceType} />
+          <CertField label="Issue Date" value={fmtDate(app.approval?.signedOn)} />
+          <CertField label="Approving Authority" value="Registrar, MPSVC (eSigned)" />
+        </div>
+        <div className="px-4 py-3 flex items-center gap-2.5 border-t" style={{ borderColor: C.line }}>
+          <QrCode size={32} color={C.muted} />
+          <span className="text-xs" style={{ color: C.muted, fontFamily: F.body }}>Scan to verify on citizen portal · Non-Sealed — Digital Copy</span>
+        </div>
+      </div>
+      <div className="flex justify-end gap-2 mt-4">
+        <Button variant="ghost" onClick={onClose}>Close</Button>
+        <Button variant="primary" icon={Printer} onClick={() => printCertificate(app)}>Print / Download</Button>
+      </div>
+    </Modal>
+  );
+}
+function CertField({ label, value }) {
+  return (
+    <div>
+      <p className="text-[10.5px] uppercase tracking-wide" style={{ color: C.muted, fontFamily: F.body }}>{label}</p>
+      <p className="text-sm font-medium mt-0.5" style={{ color: C.ink, fontFamily: F.body }}>{value}</p>
+    </div>
+  );
+}
+
 /* ============================== CHECKER DASHBOARD ============================== */
 // Every row opens the complete application form (ApprovalScreen); it renders read-only
 // with an Audit Trail link for any stage other than Pending Approval.
@@ -1974,13 +2104,23 @@ function CheckerDashboard({ apps, onOpenApproval }) {
 }
 
 /* ============================== APPLICATION APPROVAL SCREEN (CHECKER) ============================== */
-function ApprovalScreen({ app, apps, onBack, onApprove, onSendBack, onReject, onViewHistory }) {
+function ApprovalScreen({ app, apps, onBack, onApprove, onSendBack, onReject, onViewHistory, autoOpenCertificate, onAutoOpened }) {
   const [screenTab, setScreenTab] = useState("application");
   const [sendBackOpen, setSendBackOpen] = useState(false);
   const [sendBackRemarks, setSendBackRemarks] = useState("");
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectRemarks, setRejectRemarks] = useState("");
   const [approvalRemarks, setApprovalRemarks] = useState("");
+  const [digitalCertOpen, setDigitalCertOpen] = useState(false);
+
+  // The certificate is generated the instant the application is approved — show it
+  // immediately rather than making the officer navigate back and reopen the application.
+  useEffect(() => {
+    if (autoOpenCertificate) {
+      setDigitalCertOpen(true);
+      onAutoOpened && onAutoOpened();
+    }
+  }, [autoOpenCertificate]);
 
   const readOnly = app.status !== ST.FORWARDED;
 
@@ -2001,6 +2141,9 @@ function ApprovalScreen({ app, apps, onBack, onApprove, onSendBack, onReject, on
         </div>
         <div className="flex items-center gap-2">
           <Badge status={app.status} />
+          {app.regNo && (
+            <Button variant="ghost" size="sm" icon={ShieldCheck} onClick={() => setDigitalCertOpen(true)}>Certificate</Button>
+          )}
           <Button variant="ghost" size="sm" icon={HistoryIcon} onClick={onViewHistory}>Audit Trail</Button>
         </div>
       </div>
@@ -2136,6 +2279,8 @@ function ApprovalScreen({ app, apps, onBack, onApprove, onSendBack, onReject, on
         onChange={setRejectRemarks}
         onSubmit={() => { onReject(app.id, rejectRemarks); setRejectOpen(false); }}
       />
+
+      <CertificateModal app={app} open={digitalCertOpen} onClose={() => setDigitalCertOpen(false)} />
     </div>
   );
 }
@@ -2649,6 +2794,7 @@ export default function MPSVCBackOffice() {
   const [historyReturnScreen, setHistoryReturnScreen] = useState("dashboard");
   const [apps, setApps] = useState(SEED_APPS);
   const [toast, setToast] = useState(null);
+  const [certReadyId, setCertReadyId] = useState(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -2724,12 +2870,14 @@ export default function MPSVCBackOffice() {
     updateApp(id, (a) => {
       const regNo = a.regNo || `MPVC/2026/0${1030 + Math.floor(Math.random() * 900)}`;
       let updated = { ...a, status: ST.PENDING_DISPATCH, regNo, approval: { remarks, signedOn: new Date().toISOString() } };
-      updated = pushLog(updated, entry(session.name, "checker", "Approved. Certificate published to citizen portal.", new Date().toISOString(), remarks));
-      updated = pushLog(updated, entry("System", "system", "Pending Print & Dispatch task created", new Date().toISOString()));
+      updated = pushLog(updated, entry(session.name, "checker", "Approved. Digital certificate generated and published to citizen portal.", new Date().toISOString(), remarks));
+      updated = pushLog(updated, entry("System", "system", "Pending Print & Dispatch task created for sealed physical certificate", new Date().toISOString()));
       return updated;
     });
-    notify("Application approved and certificate published. Print & Dispatch task created.");
-    setScreen("dashboard"); setActiveId(null);
+    notify("Application approved. Digital certificate published; Print & Dispatch task created for the sealed physical certificate.");
+    // Stay on this application's screen (rather than bouncing back to the dashboard) so
+    // the newly generated certificate can be shown immediately — see certReadyId below.
+    setCertReadyId(id);
   }
 
   function sendBackToScrutiny(id, remarks) {
@@ -2788,6 +2936,8 @@ export default function MPSVCBackOffice() {
         onSendBack={sendBackToScrutiny}
         onReject={rejectApp}
         onViewHistory={() => openHistory(activeApp.id, "approval")}
+        autoOpenCertificate={certReadyId === activeApp.id}
+        onAutoOpened={() => setCertReadyId(null)}
       />
     );
   } else if (screen === "history" && activeApp) {

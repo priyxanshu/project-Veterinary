@@ -1,0 +1,1697 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Provisional Registration — Prototype</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;600;700;800&display=swap">
+<style>
+  :root{
+    --ink:#21252B; --ink-soft:#565C64; --bg:#F5F4F0; --surface:#FFFFFF;
+    --border:#D8D5CD; --accent:#145C4B; --accent-dark:#0E483A; --accent-soft:#E4EFEC;
+    --accent-soft-border:#BFE0D5; --info:#2A5C99; --info-soft:#EAF1FA;
+    --req:#C23B22; --danger-soft:#FCEEEC; --danger-border:#F2C6BC;
+    --success:#1E7F4F; --warn-bg:#FFF4E5; --warn-border:#F0B961; --warn-text:#8A5A00;
+    --muted-bg:#EFEDE6;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:'Source Sans 3',system-ui,sans-serif; background:var(--bg); color:var(--ink);}
+  h1,h2,h3{font-family:'Manrope',system-ui,sans-serif; margin:0;}
+  a{color:inherit; text-decoration:none;}
+  .screen{display:none;}
+  .screen.active{display:block;}
+  .topbar{height:80px; background:var(--accent); display:flex; align-items:center; justify-content:space-between; padding:0 clamp(20px,5vw,56px); box-sizing:border-box;}
+  .topbar h1{font-size:19px; color:#fff;}
+  .topbar .back{font-size:13px; color:var(--accent-soft-border); cursor:pointer; background:none; border:none; font-family:inherit;}
+  .topbar-tall{height:96px;}
+  .topbar-tall .stack{display:flex; flex-direction:column; gap:2px;}
+  .topbar-tall .stack h1{font-size:22px;}
+  .topbar-tall .stack span{font-size:13px; color:var(--accent-soft-border);}
+  .badge-pill{font-size:12px; color:var(--accent-soft-border); border:1px solid #3E8272; border-radius:20px; padding:6px 14px;}
+
+  .breadcrumb{display:flex; align-items:center; gap:10px; padding:20px clamp(20px,5vw,56px); background:var(--surface); border-bottom:1px solid var(--border); flex-wrap:wrap;}
+  .crumb{display:flex; align-items:center; gap:8px; font-size:13px; color:#8A8F96;}
+  .crumb .dot{width:22px; height:22px; border-radius:50%; background:var(--muted-bg); display:flex; align-items:center; justify-content:center; font-size:12px;}
+  .crumb.done{color:var(--success);} .crumb.done .dot{background:var(--success); color:#fff;}
+  .crumb.current{color:var(--accent); font-weight:700;} .crumb.current .dot{background:var(--accent); color:#fff;}
+  .crumb-line{height:1px; width:40px; background:var(--border); flex-shrink:0;}
+
+  .btn{display:inline-flex; align-items:center; justify-content:center; height:48px; padding:0 24px; border-radius:8px; font-weight:700; font-size:15px; cursor:pointer; border:none; font-family:inherit;}
+  .btn-sm{height:44px; padding:0 20px; font-size:14px;}
+  .btn-primary{background:var(--accent); color:#fff;}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-outline{background:#fff; color:var(--accent); border:1.5px solid var(--accent);}
+  .btn-outline:hover{background:var(--accent-soft);}
+  .btn-disabled{background:var(--border); color:#8A8F96; cursor:not-allowed;}
+
+  input[type=text],input[type=email],input[type=tel],input[type=date],input[type=password],select{
+    font-family:'Source Sans 3',sans-serif; font-size:14.5px; height:44px; border-radius:6px;
+    border:1px solid var(--border); padding:0 12px; box-sizing:border-box; width:100%; background:#fff; color:var(--ink);
+  }
+  input:focus,select:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  input:disabled,select:disabled{background:#F0EFEA; color:#7A7F86;}
+  label{font-size:13px; font-weight:600; color:var(--ink-soft);}
+  .req{color:var(--req);}
+  .field{display:flex; flex-direction:column; gap:6px;}
+  .grid2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px 32px;}
+  @media(max-width:720px){ .grid2{grid-template-columns:1fr;} }
+  .section{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:32px clamp(20px,4vw,40px); display:flex; flex-direction:column; gap:22px;}
+  .section-title{font-size:13px; font-weight:800; color:var(--info); text-transform:uppercase; letter-spacing:0.6px;}
+  .note{font-size:12.5px; color:var(--ink-soft); line-height:1.5; background:var(--bg); border:1px solid #E5E3DB; border-radius:7px; padding:10px 14px;}
+  .note-danger{color:var(--req); background:var(--danger-soft); border-color:var(--danger-border);}
+  .note-warn{display:flex; gap:10px; align-items:flex-start; background:var(--warn-bg); border:1px solid var(--warn-border); border-radius:8px; padding:14px 16px; font-size:13.5px; color:var(--warn-text); line-height:1.5;}
+  .note-ok{display:flex; gap:10px; align-items:flex-start; background:var(--accent-soft); border:1px solid var(--accent-soft-border); border-radius:8px; padding:14px 16px; font-size:13.5px; color:var(--accent-dark); line-height:1.5;}
+  .verified-tag{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--success); font-weight:700;}
+  .upload-box{border:1.5px dashed #C7C3B8; border-radius:8px; padding:16px; display:flex; align-items:center; gap:12px; background:#FAFAF7;}
+  .pill{height:40px; padding:0 18px; border-radius:20px; font-size:13.5px; font-weight:700; cursor:pointer; border:1.5px solid var(--border); background:#fff; color:var(--ink-soft); font-family:inherit;}
+  .pill-on{border-color:var(--accent); background:var(--accent-soft); color:var(--accent);}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; box-sizing:border-box; display:flex; flex-direction:column; gap:16px;}
+  .icon-badge{width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center;}
+
+  .container-narrow{max-width:480px; margin:0 auto;}
+  .container-mid{max-width:620px; margin:0 auto;}
+  .page-pad{padding:40px clamp(20px,5vw,56px) 100px; box-sizing:border-box;}
+  .center-fill{min-height:calc(100vh - 176px); display:flex; align-items:center; justify-content:center; padding:40px 20px; box-sizing:border-box;}
+
+  /* ---- Officer portal ---- */
+  .off-body{background:#F1F2F4; color:#1F2430;}
+  .off-topbar{height:64px; background:#1F2A44; display:flex; align-items:center; justify-content:space-between; padding:0 clamp(20px,4vw,40px); box-sizing:border-box;}
+  .off-topbar h1{font-size:17px; color:#fff;}
+  .off-role-badge{font-size:12px; color:#AEB6C4; border:1px solid #3C4A66; border-radius:20px; padding:5px 12px;}
+  .off-filter-field{display:flex; flex-direction:column; gap:4px;}
+  .off-filter-field label,.off-section label{font-size:11.5px; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.4px;}
+  .off-btn-ghost{height:38px; background:#F1F2F4; color:#1F2430; border:1px solid #D3D6DB; border-radius:6px; font-family:inherit; font-weight:700; font-size:12.5px; padding:0 14px; cursor:pointer;}
+  select.off-select, .off-filter-field select, .off-filter-field input{font-family:'Source Sans 3',sans-serif; font-size:13.5px; height:38px; border-radius:6px; border:1px solid #D3D6DB; padding:0 10px; box-sizing:border-box; background:#fff; color:#1F2430; width:100%;}
+  .off-table-wrap{border:1px solid #E2E4E9; border-radius:8px; overflow:hidden; background:#fff;}
+  .off-table-header,.off-table-row{display:grid; grid-template-columns:170px 190px 130px 110px 130px 190px 120px; align-items:center;}
+  .off-table-header{background:#F8F8F6; border-bottom:1px solid #E2E4E9;}
+  .off-table-header div{padding:10px 12px; font-size:11.5px; font-weight:700; color:#6B7280;}
+  .off-table-row{border-bottom:1px solid #EEEFF1;}
+  .off-table-row div{padding:12px;}
+  .badge{display:inline-flex; align-items:center; font-size:11.5px; font-weight:700; padding:5px 12px; border-radius:20px; border:1px solid; white-space:nowrap;}
+  .btn-navy{background:#1F3A5F; color:#fff;}
+  .btn-danger{background:#fff; color:#C23B22; border:1.5px solid #C23B22;}
+  .btn-danger-solid{background:#C23B22; color:#fff;}
+  .btn-success{background:#1E7F4F; color:#fff;}
+  .btn:disabled{background:#D3D6DB !important; color:#9CA3AF !important; cursor:not-allowed; border-color:#D3D6DB !important;}
+  .off-section{background:#fff; border:1px solid #E2E4E9; border-radius:10px; padding:26px clamp(18px,4vw,32px); display:flex; flex-direction:column; gap:4px;}
+  .off-section-title{font-size:13px; font-weight:800; color:#1F3A5F; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; display:block;}
+  .field-row{padding:14px 0; border-bottom:1px solid #EEEFF1; display:flex; flex-direction:column; gap:8px;}
+  .field-row:last-child{border-bottom:none;}
+  .field-label{font-size:11.5px; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.3px;}
+  .field-value{font-size:14.5px; font-weight:600; color:#1F2430;}
+  .history-note{font-size:11.5px; color:#8A5A00; font-style:italic;}
+  .flag-btn{background:#fff; color:#6B7280; border:1.5px solid #D3D6DB; height:32px; padding:0 12px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; flex-shrink:0; font-family:inherit;}
+  .flag-btn.flagged{background:#FCEEEC; color:#C23B22; border-color:#C23B22;}
+  .remark-input{margin-top:2px; max-width:480px; height:40px; border-radius:6px; border:1px solid #D3D6DB; padding:0 12px; font-family:'Source Sans 3',sans-serif; font-size:13.5px; width:100%; box-sizing:border-box;}
+  .off-textarea{width:100%; min-height:90px; border-radius:6px; border:1px solid #D3D6DB; padding:10px 12px; font-family:inherit; font-size:14px; resize:vertical; box-sizing:border-box;}
+  .off-note{display:flex; gap:10px; align-items:flex-start; border-radius:8px; padding:14px 16px; font-size:13.5px; line-height:1.5;}
+  .off-note-ok{background:#E4EFEC; border:1px solid #BFE0D5; color:#0E483A;}
+  .off-note-warn{background:#FFF4E5; border:1px solid #F0B961; color:#8A5A00;}
+  .off-note-danger{background:#FCEEEC; border:1px solid #F2C6BC; color:#922C1A;}
+</style>
+
+<style>
+  /* ---- Officer portal v2 (Inbox / Search & Reports) ---- */
+  .so2-body{background:#F4F0E3; color:#1B2333;}
+  .so2-body h1,.so2-body h2{font-family:'Playfair Display',Georgia,serif; margin:0;}
+  .so2-navbar{height:66px; background:#101B33; display:flex; align-items:center; justify-content:space-between; padding:0 32px; box-sizing:border-box;}
+  .so2-logo{width:34px; height:34px; border-radius:50%; border:1.5px solid #C79A3F; display:flex; align-items:center; justify-content:center;}
+  .so2-avatar{width:34px; height:34px; border-radius:50%; background:#F1E4C9; color:#7A3B22; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:800;}
+  .so2-eyebrow{font-size:12px; font-weight:800; color:#A9752B; letter-spacing:0.7px; text-transform:uppercase;}
+  .so2-card{background:#FFFFFF; border:1px solid #E7E1D2; border-radius:14px;}
+  .so2-navlink{display:flex; align-items:center; gap:10px; padding:13px 16px; border-radius:10px; font-weight:700; font-size:14.5px; color:#736C58;}
+  .so2-navlink.active{background:#FFFFFF; border:1.5px solid #1B2333; color:#1B2333;}
+  .so2-pill{display:inline-flex; align-items:center; gap:8px; height:40px; padding:0 16px; border-radius:20px; font-size:13.5px; font-weight:700; border:1.5px solid #E7E1D2; background:#FFFFFF; color:#4B4636; cursor:pointer; font-family:inherit;}
+  .so2-pill.active{background:#F3E6C8; border-color:#C79A3F; color:#6B4A17;}
+  .so2-pill .count{background:#EFEBDE; border-radius:10px; padding:1px 8px; font-size:11.5px; color:#736C58;}
+  .so2-pill.active .count{background:#E4CE99; color:#6B4A17;}
+  .so2-stat-num{font-family:'Playfair Display',Georgia,serif; font-size:30px; font-weight:700;}
+  .so2-tab{padding:16px 22px; font-size:15px; font-weight:700; color:#8A8471; cursor:pointer; border-bottom:2.5px solid transparent; display:flex; align-items:center; gap:8px; font-family:inherit; background:none; border-left:none; border-right:none; border-top:none;}
+  .so2-tab.active{color:#1B2333; border-bottom-color:#1B2333;}
+  .so2-tab .count{background:#EFEBDE; border-radius:10px; padding:1px 8px; font-size:11.5px; color:#736C58;}
+  .so2-tab.active .count{background:#F3E6C8; color:#6B4A17;}
+  .so2-status-badge{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; padding:6px 12px; border-radius:20px;}
+  .so2-status-dot{width:6px; height:6px; border-radius:50%; display:inline-block;}
+  .so2-btn-review{display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 14px; border-radius:7px; background:#1B2333; color:#FFFFFF; font-size:12.5px; font-weight:700; border:none; font-family:inherit; cursor:pointer;}
+  .so2-btn{display:inline-flex; align-items:center; gap:8px; height:40px; padding:0 16px; border-radius:8px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; border:1.5px solid #D9D3C2; background:#FFFFFF; color:#1B2333;}
+  .so2-table-wrap select,.so2-body select,.so2-body input[type=text],.so2-body input[type=date]{font-family:'Source Sans 3',sans-serif; font-size:13.5px; height:42px; border-radius:7px; border:1px solid #D9D3C2; padding:0 12px; box-sizing:border-box; background:#FFFFFF; color:#1B2333; width:100%;}
+  .so2-body select:focus,.so2-body input:focus{outline:2px solid #1B2333; outline-offset:1px;}
+  .so2-body label{font-size:13px; font-weight:700; color:#4B4636;}
+  .so2-col-check{display:flex; align-items:center; gap:8px; font-size:13.5px; font-weight:600; color:#1B2333; cursor:pointer;}
+  .so2-col-check input{width:16px; height:16px; accent-color:#1B2333;}
+  .so2-col-check.locked{color:#A39C88; cursor:default;}
+  .so2-table-header,.so2-table-row{display:grid; grid-template-columns:1.4fr 1.3fr 1.6fr 1fr 1.2fr 0.9fr; align-items:center;}
+  .so2-table-header{background:#FAF8F2; border-bottom:1px solid #E7E1D2;}
+  .so2-table-header div{padding:12px 22px; font-size:11px; font-weight:800; color:#8A8471; letter-spacing:0.4px;}
+  .so2-table-row{border-bottom:1px solid #F0EDE2;}
+  .so2-table-row div{padding:16px 22px; font-size:14px;}
+</style>
+</head>
+<body>
+
+<!-- ============ SCREEN 1: LANDING ============ -->
+<section class="screen active" id="screen-main">
+  <div class="topbar topbar-tall">
+    <div class="stack"><h1>Madhya Pradesh Veterinary Council</h1><span>Online Registration Portal</span></div>
+    <span class="badge-pill">[YOUR COUNCIL / DEPT NAME]</span>
+  </div>
+  <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:40px; padding:56px 20px;">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center;">
+      <h2 style="font-size:30px;">Welcome to the Registration Portal</h2>
+      <p style="margin:0; font-size:15px; color:var(--ink-soft); max-width:520px;">Apply for Provisional or Transfer-In Registration as a veterinary graduate, or continue an existing application.</p>
+    </div>
+    <div style="display:flex; gap:28px; flex-wrap:wrap; justify-content:center; max-width:820px;">
+      <div class="card" style="width:420px;">
+        <div class="icon-badge" style="background:var(--accent-soft);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+        </div>
+        <h3 style="font-size:19px;">New User</h3>
+        <p style="margin:0; font-size:14px; color:var(--ink-soft); line-height:1.5;">First time here? Start a fresh Provisional or Transfer-In Registration application.</p>
+        <div style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:var(--ink-soft); margin:4px 0 8px;">
+          <div style="display:flex; gap:8px; align-items:center;"><span style="width:18px; height:18px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">1</span>Select your college's state</div>
+          <div style="display:flex; gap:8px; align-items:center;"><span style="width:18px; height:18px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">2</span>Choose registration type</div>
+          <div style="display:flex; gap:8px; align-items:center;"><span style="width:18px; height:18px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">3</span>Verify mobile &amp; email</div>
+          <div style="display:flex; gap:8px; align-items:center;"><span style="width:18px; height:18px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">4</span>Fill &amp; submit application</div>
+        </div>
+        <button class="btn btn-primary" onclick="nav('screen-state')">Start New Registration →</button>
+
+        <div style="display:flex; align-items:center; gap:10px; margin-top:4px;">
+          <div style="flex-grow:1; height:1px; background:#E5E3DB;"></div>
+          <span style="font-size:12px; color:#8A8F96;">Already applied?</span>
+          <div style="flex-grow:1; height:1px; background:#E5E3DB;"></div>
+        </div>
+        <button class="btn btn-outline" onclick="nav('screen-continue')">Edit/Track Application →</button>
+      </div>
+    </div>
+  </div>
+  <div style="padding:14px; text-align:center; font-size:12px; color:#8A8F96; background:var(--muted-bg); border-top:1px solid var(--border);">
+    UI prototype for demonstration — not a live registration system. <a href="#" style="color:#1F3A5F; font-weight:700; text-decoration:underline;" onclick="nav('screen-so-queue'); return false;">Staff Login →</a>
+  </div>
+</section>
+
+<!-- ============ SCREEN 2: STATE SELECT ============ -->
+<section class="screen" id="screen-state">
+  <div class="topbar"><h1>Madhya Pradesh Veterinary Council — Registration</h1></div>
+  <div class="breadcrumb">
+    <span class="crumb current"><span class="dot">1</span>State</span><span class="crumb-line"></span>
+    <span class="crumb"><span class="dot">2</span>Reg. Type</span><span class="crumb-line"></span>
+    <span class="crumb"><span class="dot">3</span>Verify</span><span class="crumb-line"></span>
+    <span class="crumb"><span class="dot">4</span>Application</span>
+  </div>
+  <div class="center-fill">
+    <div class="container-narrow" style="display:flex; flex-direction:column; gap:28px; width:100%;">
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <h2 style="font-size:24px;">Where is your college?</h2>
+        <p style="margin:0; font-size:14px; color:var(--ink-soft);">Tell us which state your veterinary college is (or was) affiliated to. This decides which registration options are available to you.</p>
+      </div>
+      <div class="field">
+        <label for="stateSelect">State of College *</label>
+        <select id="stateSelect" onchange="onStateChange(this.value)">
+          <option value="">Select State</option>
+          <option value="Madhya Pradesh">Madhya Pradesh</option>
+          <option value="Maharashtra">Maharashtra</option>
+          <option value="Uttar Pradesh">Uttar Pradesh</option>
+          <option value="Rajasthan">Rajasthan</option>
+          <option value="Chhattisgarh">Chhattisgarh</option>
+          <option value="Other">Other State</option>
+        </select>
+      </div>
+      <div id="mp-ok" style="display:none; flex-direction:column; gap:16px;">
+        <div class="note-ok">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><path d="M20 6 9 17l-5-5"/></svg>
+          <span>Madhya Pradesh colleges are supported for Provisional and Transfer-In Registration on this portal.</span>
+        </div>
+        <button class="btn btn-primary" style="align-self:flex-start;" onclick="nav('screen-regtype')">Continue →</button>
+      </div>
+      <div id="other-state" style="display:none; flex-direction:column; gap:16px;">
+        <div class="note-warn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warn-text)" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/></svg>
+          <span id="other-state-text">Online registration for that state is not handled by this portal. Please contact the veterinary council for that state directly.</span>
+        </div>
+        <button class="btn btn-disabled" disabled>Continue →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCREEN 3: REGISTRATION TYPE ============ -->
+<section class="screen" id="screen-regtype">
+  <div class="topbar"><h1>Madhya Pradesh Veterinary Council — Registration</h1></div>
+  <div class="breadcrumb">
+    <span class="crumb done"><span class="dot">✓</span>State</span><span class="crumb-line"></span>
+    <span class="crumb current"><span class="dot">2</span>Reg. Type</span><span class="crumb-line"></span>
+    <span class="crumb"><span class="dot">3</span>Verify</span><span class="crumb-line"></span>
+    <span class="crumb"><span class="dot">4</span>Application</span>
+  </div>
+  <div class="center-fill">
+    <div class="container-mid" style="display:flex; flex-direction:column; gap:28px; width:100%;">
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <h2 style="font-size:24px;">What would you like to apply for?</h2>
+        <p style="margin:0; font-size:14px; color:var(--ink-soft);">College state: Madhya Pradesh. Choose the type of registration you need.</p>
+      </div>
+      <div style="display:flex; gap:20px; flex-wrap:wrap;">
+        <button class="card" id="card-provisional" style="text-align:left; cursor:pointer; flex:1; min-width:260px;" onclick="pickRegType('provisional')">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:17px; font-weight:700;">Provisional Registration</span>
+            <span class="dotcircle" id="dot-provisional" style="width:20px; height:20px; border-radius:50%; border:2px solid var(--border);"></span>
+          </div>
+          <p style="margin:0; font-size:13.5px; color:var(--ink-soft); line-height:1.5;">For graduates awaiting or recently completing their B.V.Sc. &amp; A.H. degree, applying for provisional registration to start practicing.</p>
+        </button>
+        <button class="card" id="card-transfer" style="text-align:left; cursor:pointer; flex:1; min-width:260px;" onclick="pickRegType('transfer')">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:17px; font-weight:700;">Transfer-In Registration</span>
+            <span class="dotcircle" id="dot-transfer" style="width:20px; height:20px; border-radius:50%; border:2px solid var(--border);"></span>
+          </div>
+          <p style="margin:0; font-size:13.5px; color:var(--ink-soft); line-height:1.5;">For veterinarians already registered with another state council who wish to transfer their registration here.</p>
+        </button>
+      </div>
+      <div id="regtype-provisional-cta" style="display:none;">
+        <button class="btn btn-primary" onclick="nav('screen-verify')">Continue →</button>
+      </div>
+      <div id="regtype-transfer-note" style="display:none;">
+        <div class="note-warn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warn-text)" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/></svg>
+          <span>Transfer-In Registration is being added to this portal soon. Please select Provisional Registration to continue this prototype, or contact the Council office for Transfer-In applications.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCREEN 4: VERIFY (NEW APPLICATION) ============ -->
+<section class="screen" id="screen-verify">
+  <div class="topbar"><h1>Madhya Pradesh Veterinary Council — Registration</h1></div>
+  <div class="breadcrumb">
+    <span class="crumb done"><span class="dot">✓</span>State</span><span class="crumb-line"></span>
+    <span class="crumb done"><span class="dot">✓</span>Reg. Type</span><span class="crumb-line"></span>
+    <span class="crumb current"><span class="dot">3</span>Verify</span><span class="crumb-line"></span>
+    <span class="crumb"><span class="dot">4</span>Application</span>
+  </div>
+  <div class="center-fill">
+    <div class="container-narrow" style="display:flex; flex-direction:column; gap:24px; width:100%;">
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <h2 style="font-size:24px;">Verify your mobile &amp; email</h2>
+        <p style="margin:0; font-size:14px; color:var(--ink-soft);">Provisional Registration — Madhya Pradesh. We'll use these to send updates on your application.</p>
+      </div>
+
+      <div class="card">
+        <label for="v-mobile">Mobile Number *</label>
+        <div style="display:flex; gap:10px;">
+          <input id="v-mobile" type="tel" placeholder="10-digit mobile number" maxlength="10">
+          <button class="btn btn-primary btn-sm" id="v-mobile-send" onclick="sendOtp('mobile')">Send OTP</button>
+        </div>
+        <div id="v-mobile-otp-row" style="display:none; gap:10px; margin-top:4px;">
+          <input type="text" placeholder="Enter 6-digit OTP" maxlength="6">
+          <button class="btn btn-primary btn-sm" id="v-mobile-verify" onclick="verifyOtp('mobile')">Verify</button>
+        </div>
+        <div id="v-mobile-verified" class="verified-tag" style="display:none; margin-top:2px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+          Mobile number verified
+        </div>
+      </div>
+
+      <div class="card">
+        <label for="v-email">Email ID *</label>
+        <div style="display:flex; gap:10px;">
+          <input id="v-email" type="email" placeholder="you@example.com">
+          <button class="btn btn-primary btn-sm" id="v-email-send" onclick="sendOtp('email')">Send OTP</button>
+        </div>
+        <div id="v-email-otp-row" style="display:none; gap:10px; margin-top:4px;">
+          <input type="text" placeholder="Enter 6-digit OTP" maxlength="6">
+          <button class="btn btn-primary btn-sm" id="v-email-verify" onclick="verifyOtp('email')">Verify</button>
+        </div>
+        <div id="v-email-verified" class="verified-tag" style="display:none; margin-top:2px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+          Email verified
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="v-continue" style="height:48px; font-size:15px;" disabled onclick="nav('screen-form')">Continue to Application Form →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCREEN 5: APPLICATION FORM ============ -->
+<section class="screen" id="screen-form">
+  <div class="topbar"><h1>Madhya Pradesh Veterinary Council — Registration</h1></div>
+  <div class="breadcrumb">
+    <span class="crumb done"><span class="dot">✓</span>State</span><span class="crumb-line"></span>
+    <span class="crumb done"><span class="dot">✓</span>Reg. Type</span><span class="crumb-line"></span>
+    <span class="crumb done"><span class="dot">✓</span>Verify</span><span class="crumb-line"></span>
+    <span class="crumb current"><span class="dot">4</span>Application</span>
+  </div>
+
+  <div class="page-pad" style="display:flex; flex-direction:column; gap:24px; max-width:1100px; margin:0 auto;">
+    <div style="display:flex; flex-direction:column; gap:4px;">
+      <h2 style="font-size:26px;">Provisional Registration Form</h2>
+      <p style="margin:0; font-size:14px; color:var(--ink-soft);">Fields marked <span class="req">*</span> are mandatory. Your mobile and email have already been verified.</p>
+    </div>
+
+    <!-- PERSONAL -->
+    <div class="section">
+      <span class="section-title">Personal Details</span>
+      <div class="grid2">
+        <div class="field"><label>First Name <span class="req">*</span></label><input type="text" id="f-firstName" placeholder="First name"></div>
+        <div class="field"><label>Middle Name</label><input type="text" id="f-middleName" placeholder="Middle name"></div>
+        <div class="field"><label>Last Name <span class="req">*</span></label><input type="text" id="f-lastName" placeholder="Last name"></div>
+        <div class="field"><label>Father's Name <span class="req">*</span></label><input type="text" id="f-fatherName" placeholder="Father's name"></div>
+        <div class="field"><label>Date of Birth <span class="req">*</span></label><input type="date" id="f-dob"></div>
+        <div class="field"><label>Gender <span class="req">*</span></label>
+          <select id="f-gender"><option>Male</option><option>Female</option><option>Transgender</option></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESIDENTIAL -->
+    <div class="section">
+      <span class="section-title">Residential Address</span>
+      <div class="note">Since your college is affiliated to Madhya Pradesh, State and District below are auto-linked and selected from the Council's records.</div>
+      <div class="grid2">
+        <div class="field" style="grid-column:1 / -1;"><label>Address <span class="req">*</span></label><input type="text" id="f-resAddress" placeholder="House no., street, locality"></div>
+        <div class="field"><label>City / Town / Village <span class="req">*</span></label><input type="text" id="f-resCity" placeholder="City / town / village"></div>
+        <div class="field"><label>Post</label><input type="text" id="f-resPost" placeholder="Post office"></div>
+        <div class="field"><label>Block / Tehsil</label><input type="text" id="f-resBlock" placeholder="Block / tehsil"></div>
+        <div class="field"><label>State <span class="req">*</span></label><select disabled><option>Madhya Pradesh</option></select></div>
+        <div class="field"><label>District <span class="req">*</span></label>
+          <select id="f-resDistrict"><option value="">Select</option><option>Bhopal</option><option>Indore</option><option>Jabalpur</option><option>Gwalior</option><option>Ujjain</option><option>Rewa</option><option>Sagar</option><option>Satna</option><option>Dewas</option><option>Ratlam</option><option>Other</option></select>
+        </div>
+        <div class="field"><label>Pin Code <span class="req">*</span></label><input type="text" id="f-resPincode" placeholder="6-digit PIN code" maxlength="6"></div>
+      </div>
+    </div>
+
+    <!-- PERMANENT -->
+    <div class="section">
+      <span class="section-title">Permanent Address</span>
+      <div class="note">Permanent Address should be the same as mentioned in your Marriage Certificate, where applicable.</div>
+      <label style="display:flex; align-items:center; gap:10px; font-size:14px; font-weight:600; color:var(--ink); cursor:pointer;">
+        <input type="checkbox" id="same-address" style="width:18px; height:18px; margin:0;" onchange="toggleSameAddress(this.checked)">
+        Same as Residential Address
+      </label>
+
+      <div id="same-address-note" class="verified-tag" style="display:none;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+        Using the Residential Address entered above.
+      </div>
+
+      <div id="perm-detail" style="display:flex; flex-direction:column; gap:22px;">
+        <div class="field">
+          <label>Is your Permanent Address also in Madhya Pradesh? <span class="req">*</span></label>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="pill" id="perm-mp-yes" onclick="setPermInMP('yes')">Yes</button>
+            <button type="button" class="pill" id="perm-mp-no" onclick="setPermInMP('no')">No</button>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="field" style="grid-column:1 / -1;"><label>Address <span class="req">*</span></label><input type="text" id="f-permAddress" placeholder="House no., street, locality"></div>
+          <div class="field"><label>City / Town / Village <span class="req">*</span></label><input type="text" id="f-permCity" placeholder="City / town / village"></div>
+          <div class="field"><label>Post</label><input type="text" id="f-permPost" placeholder="Post office"></div>
+          <div class="field"><label>Block / Tehsil</label><input type="text" id="f-permBlock" placeholder="Block / tehsil"></div>
+
+          <div class="field perm-mp-field" style="display:none;"><label>State <span class="req">*</span></label><select disabled><option>Madhya Pradesh</option></select></div>
+          <div class="field perm-mp-field" style="display:none;"><label>District <span class="req">*</span></label>
+            <select id="f-permDistrictMP"><option value="">Select</option><option>Bhopal</option><option>Indore</option><option>Jabalpur</option><option>Gwalior</option><option>Ujjain</option><option>Rewa</option><option>Sagar</option><option>Satna</option><option>Dewas</option><option>Ratlam</option><option>Other</option></select>
+          </div>
+
+          <div class="field perm-text-field" style="display:none;"><label>State <span class="req">*</span></label><input type="text" id="f-permStateText" placeholder="Enter state name"></div>
+          <div class="field perm-text-field" style="display:none;"><label>District <span class="req">*</span></label><input type="text" id="f-permDistrictText" placeholder="Enter district name"></div>
+
+          <div class="field"><label>Pin Code <span class="req">*</span></label><input type="text" id="f-permPincode" placeholder="6-digit PIN code" maxlength="6"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTACT -->
+    <div class="section">
+      <span class="section-title">Contact &amp; Preferences</span>
+      <div class="grid2">
+        <div class="field"><label>Preferred Address <span class="req">*</span></label>
+          <select id="f-preferredAddress"><option value="">Select</option><option>Residential</option><option>Permanent</option></select>
+        </div>
+        <div></div>
+        <div class="field"><label>Mobile No. 1 <span class="req">*</span></label>
+          <div style="position:relative;">
+            <input type="tel" value="98XXXXXX10" disabled>
+            <span style="position:absolute; right:10px; top:11px; font-size:11.5px; font-weight:700; color:var(--success);">✓ Verified</span>
+          </div>
+        </div>
+        <div class="field"><label>Mobile No. 2</label><input type="tel" id="f-mobile2" placeholder="Alternate mobile number"></div>
+        <div class="field"><label>Email ID <span class="req">*</span></label>
+          <div style="position:relative;">
+            <input type="email" value="applicant@example.com" disabled>
+            <span style="position:absolute; right:10px; top:11px; font-size:11.5px; font-weight:700; color:var(--success);">✓ Verified</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Preferred Mobile No.</label>
+          <div style="display:flex; gap:18px; height:44px; align-items:center;">
+            <label style="display:flex; align-items:center; gap:6px; font-weight:400; font-size:14px; cursor:pointer;"><input type="radio" name="prefmobile" checked style="width:16px; height:16px;"> Mobile No. 1</label>
+            <label style="display:flex; align-items:center; gap:6px; font-weight:400; font-size:14px; cursor:pointer;"><input type="radio" name="prefmobile" style="width:16px; height:16px;"> Mobile No. 2</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUALIFICATION -->
+    <div class="section">
+      <span class="section-title">Qualification</span>
+      <div class="grid2">
+        <div class="field"><label>Roll No. <span class="req">*</span></label><input type="text" id="f-rollNo" placeholder="Examination roll number"></div>
+        <div class="field"><label>University Enrollment No. <span class="req">*</span></label><input type="text" id="f-enrollNo" placeholder="Enrollment number"></div>
+      </div>
+      <div style="border:1px solid var(--border); border-radius:8px; overflow:auto;">
+        <table style="border-collapse:collapse; width:100%; min-width:680px;">
+          <tr style="background:var(--bg);">
+            <th style="text-align:left; padding:10px 14px; font-size:12.5px; font-weight:700; color:#3A3F45; border-bottom:1px solid var(--border);">Degree Name</th>
+            <th style="text-align:left; padding:10px 14px; font-size:12.5px; font-weight:700; color:#3A3F45; border-bottom:1px solid var(--border); border-left:1px solid var(--border);">Name of University</th>
+            <th style="text-align:left; padding:10px 14px; font-size:12.5px; font-weight:700; color:#3A3F45; border-bottom:1px solid var(--border); border-left:1px solid var(--border);">Name of College</th>
+            <th style="text-align:left; padding:10px 14px; font-size:12.5px; font-weight:700; color:#3A3F45; border-bottom:1px solid var(--border); border-left:1px solid var(--border);">Passing Year</th>
+          </tr>
+          <tr>
+            <td style="padding:12px 14px; font-size:14px;">B.V.Sc. &amp; A.H.</td>
+            <td style="padding:8px 12px; border-left:1px solid var(--border);"><select disabled style="height:38px;"><option>Nanaji Deshmukh Veterinary Science Univ.</option></select></td>
+            <td style="padding:8px 12px; border-left:1px solid var(--border);">
+              <select id="f-college" style="height:38px;">
+                <option>Select</option>
+                <option>College of Veterinary Science &amp; Animal Husbandry, Jabalpur</option>
+                <option>College of Veterinary Science &amp; Animal Husbandry, Mhow</option>
+                <option>College of Veterinary Science &amp; Animal Husbandry, Rewa</option>
+              </select>
+            </td>
+            <td style="padding:8px 12px; border-left:1px solid var(--border);"><select id="f-passingYear" style="height:38px;"><option>2025-2026</option><option selected>2026-2027</option><option>2027-2028</option></select></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- UPLOADS -->
+    <div class="section">
+      <span class="section-title">Document Upload</span>
+      <div class="note note-danger">Photo will be used for official purposes. File size must not exceed 1024 KB. Accepted formats: JPEG, PNG, JPG, GIF.</div>
+      <div class="grid2">
+        <div class="field"><label>University / Course Completion Certificate <span class="req">*</span></label>
+          <div class="upload-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#565C64" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg><span style="font-size:13.5px; color:var(--ink-soft);">Choose file — <em>No file chosen</em></span></div>
+        </div>
+        <div class="field"><label>Photo <span class="req">*</span></label>
+          <div class="upload-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#565C64" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg><span style="font-size:13.5px; color:var(--ink-soft);">Choose file — <em>No file chosen</em></span></div>
+        </div>
+        <div class="field"><label>Others</label>
+          <div class="upload-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#565C64" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg><span style="font-size:13.5px; color:var(--ink-soft);">Choose file — <em>No file chosen</em></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYMENT -->
+    <div class="section">
+      <span class="section-title">Payment</span>
+      <div class="field">
+        <label>Payment Type <span class="req">*</span></label>
+        <div style="display:flex; gap:12px;">
+          <button type="button" class="pill" id="pay-offline" onclick="setPaymentType('offline')">Offline Payment</button>
+          <button type="button" class="pill" id="pay-online" onclick="setPaymentType('online')">Online Payment ⚠</button>
+        </div>
+      </div>
+      <div id="pay-online-note" style="display:none;">
+        <div class="note-warn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warn-text)" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/></svg>
+          <span>Online Payment is currently under development. Please select Offline Payment to submit your application.</span>
+        </div>
+      </div>
+      <div id="pay-offline-fields" style="display:flex; flex-direction:column; gap:22px;">
+        <div class="grid2">
+          <div class="field"><label>Payable Amount</label><input type="text" value="₹ 1,500" disabled></div>
+          <div></div>
+          <div class="field"><label>Cheque / DD No. <span class="req">*</span></label><input type="text" id="f-chequeNo" placeholder="Cheque / DD number"></div>
+          <div class="field"><label>Bank Name <span class="req">*</span></label><input type="text" id="f-bankName" placeholder="Issuing bank"></div>
+          <div class="field"><label>Payment Date <span class="req">*</span></label><input type="date" id="f-paymentDate"></div>
+          <div class="field">
+            <label>Captcha</label>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:130px; height:42px; background:var(--muted-bg); border:1px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; font-family:Georgia,serif; font-style:italic; font-weight:700; font-size:19px; letter-spacing:3px; color:#3A3F45;">K7dQ2</div>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#565C64" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="field" style="max-width:340px;"><label>Enter Captcha <span class="req">*</span></label><input type="text" placeholder="Type the code above"></div>
+      </div>
+    </div>
+
+    <div id="form-submit-bar" style="display:flex; gap:14px; padding-top:8px; flex-wrap:wrap;">
+      <button class="btn btn-outline" onclick="saveDraftForm()">Save as Draft</button>
+      <button class="btn btn-primary" onclick="submitApplicationForm()">Submit Registration</button>
+    </div>
+
+    <div id="form-draft-saved" style="display:none; gap:10px; align-items:flex-start; background:#EAF1FA; border:1px solid #BFD7EF; border-radius:8px; padding:16px 20px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2A5C99" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><path d="M20 6 9 17l-5-5"/></svg>
+      <span style="font-size:13.5px; color:#1E3A5F; line-height:1.5;">Draft saved. You can continue any time via "Edit/Track Application" on the home page.</span>
+    </div>
+
+    <div id="form-submitted" style="display:none; flex-direction:column; gap:14px; background:var(--accent-soft); border:1px solid var(--accent-soft-border); border-radius:10px; padding:28px 32px;">
+      <div style="display:flex; gap:12px; align-items:flex-start;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><path d="M20 6 9 17l-5-5"/></svg>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <h3 style="font-size:19px; color:var(--accent-dark);">Application Submitted Successfully</h3>
+          <span style="font-size:14px; color:var(--accent-dark);">Reference No. <strong id="submitted-ref">APP-2026-MPVC-004821</strong></span>
+        </div>
+      </div>
+      <p style="margin:0; font-size:13.5px; color:var(--accent-dark); line-height:1.6;">Your application has been sent to the Scrutiny Officer for review. You'll always be able to see it's under process from the "Track Application" option on the home page. If anything needs correction, the officer will send it back and you'll only need to edit the fields they flag.</p>
+      <div style="display:flex; gap:14px; flex-wrap:wrap; padding-top:6px;">
+        <button class="btn btn-primary" onclick="nav('screen-status')">Track This Application →</button>
+        <button class="btn btn-outline" onclick="nav('screen-main')">Back to Home</button>
+      </div>
+      <div style="border-top:1px solid var(--accent-soft-border); margin-top:4px; padding-top:14px;">
+        <span style="font-size:12px; color:#4E6F63;">Prototype note: this is where the application now sits, waiting to be picked up.</span>
+        <a href="#" style="display:block; font-size:13px; color:var(--accent); font-weight:700; margin-top:4px;" onclick="nav('screen-so-queue'); return false;">See it in the Scrutiny Officer's queue →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCREEN 6: CONTINUE / TRACK VERIFY ============ -->
+<section class="screen" id="screen-continue">
+  <div class="topbar">
+    <h1>Madhya Pradesh Veterinary Council — Registration</h1>
+    <button class="back" onclick="nav('screen-main')">← Back to Home</button>
+  </div>
+  <div class="center-fill">
+    <div class="container-narrow" style="display:flex; flex-direction:column; gap:24px; width:100%;">
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <h2 style="font-size:24px;" id="c-title">Edit / Track Application</h2>
+        <p style="margin:0; font-size:14px; color:var(--ink-soft);" id="c-subtitle">Verify your registered mobile number with an OTP to continue.</p>
+      </div>
+
+      <div class="card">
+        <label for="c-mobile">Registered Mobile Number *</label>
+        <div style="display:flex; gap:10px;">
+          <input id="c-mobile" type="tel" placeholder="10-digit mobile number" maxlength="10">
+          <button class="btn btn-primary btn-sm" id="c-mobile-send" onclick="sendOtp('continue')">Send OTP</button>
+        </div>
+        <div id="c-mobile-otp-row" style="display:none; gap:10px; margin-top:4px;">
+          <input type="text" placeholder="Enter 6-digit OTP" maxlength="6">
+          <button class="btn btn-primary btn-sm" id="c-mobile-verify" onclick="verifyOtp('continue')">Verify</button>
+        </div>
+        <div id="c-mobile-verified" class="verified-tag" style="display:none; margin-top:2px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+          Mobile number verified
+        </div>
+      </div>
+
+      <div id="c-options" style="display:none; flex-direction:column; gap:14px;">
+        <div class="card" style="flex-direction:row; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:15.5px; font-weight:700;">Continue Draft Application</span>
+            <span style="font-size:13px; color:var(--ink-soft);">Resume your saved Provisional Registration form from where you left off.</span>
+          </div>
+          <button class="btn btn-primary" onclick="nav('screen-form')">Resume →</button>
+        </div>
+        <div class="card" style="flex-direction:row; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <span style="font-size:15.5px; font-weight:700;">Track / View Application</span>
+            <span style="font-size:13px; color:var(--ink-soft);">Check the status of an application you've already submitted.</span>
+          </div>
+          <button class="btn btn-outline" onclick="nav('screen-status')">View Status →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCREEN 7: STATUS ============ -->
+<section class="screen" id="screen-status">
+  <div class="topbar">
+    <h1>Madhya Pradesh Veterinary Council — Registration</h1>
+    <button class="back" onclick="nav('screen-main')">← Back to Home</button>
+  </div>
+  <div class="page-pad" style="max-width:1000px; margin:0 auto; display:flex; flex-direction:column; gap:24px;">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <h2 style="font-size:24px;">Application Status</h2>
+        <p style="margin:0; font-size:14px; color:var(--ink-soft);">Application Reference No. <strong>APP-2026-MPVC-004821</strong></p>
+      </div>
+      <span style="font-size:12.5px; font-weight:700; color:var(--warn-text); background:var(--warn-bg); border:1px solid var(--warn-border); border-radius:20px; padding:7px 16px;">Under Review</span>
+    </div>
+
+    <div class="section">
+      <span class="section-title">Progress</span>
+      <div style="display:flex; align-items:flex-start; overflow-x:auto;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:8px; width:25%; min-width:110px;">
+          <div style="width:32px; height:32px; border-radius:50%; background:var(--success); color:#fff; display:flex; align-items:center; justify-content:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <span style="font-size:12.5px; font-weight:700; text-align:center;">Submitted</span>
+          <span style="font-size:11.5px; color:#8A8F96;">02 Sep 2026</span>
+        </div>
+        <div style="height:2px; background:var(--success); flex-grow:1; margin-top:15px;"></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:8px; width:25%; min-width:110px;">
+          <div style="width:32px; height:32px; border-radius:50%; background:var(--success); color:#fff; display:flex; align-items:center; justify-content:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <span style="font-size:12.5px; font-weight:700; text-align:center;">Document Verification</span>
+          <span style="font-size:11.5px; color:#8A8F96;">06 Sep 2026</span>
+        </div>
+        <div style="height:2px; background:var(--warn-border); flex-grow:1; margin-top:15px;"></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:8px; width:25%; min-width:110px;">
+          <div style="width:32px; height:32px; border-radius:50%; background:var(--warn-bg); border:2px solid var(--warn-border); color:var(--warn-text); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700;">3</div>
+          <span style="font-size:12.5px; font-weight:700; text-align:center;">Fee Verification</span>
+          <span style="font-size:11.5px; color:var(--warn-text);">In progress</span>
+        </div>
+        <div style="height:2px; background:var(--border); flex-grow:1; margin-top:15px;"></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:8px; width:25%; min-width:110px;">
+          <div style="width:32px; height:32px; border-radius:50%; background:var(--muted-bg); color:#8A8F96; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700;">4</div>
+          <span style="font-size:12.5px; font-weight:700; text-align:center; color:#8A8F96;">Approved</span>
+          <span style="font-size:11.5px; color:#8A8F96;">Pending</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <span class="section-title">Application Details</span>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:20px 24px;">
+        <div class="field" style="gap:3px;"><span style="font-size:12px; color:#8A8F96; font-weight:600;">Registration Type</span><span style="font-size:14.5px; font-weight:600;">Provisional Registration</span></div>
+        <div class="field" style="gap:3px;"><span style="font-size:12px; color:#8A8F96; font-weight:600;">Degree</span><span style="font-size:14.5px; font-weight:600;">B.V.Sc. &amp; A.H.</span></div>
+        <div class="field" style="gap:3px;"><span style="font-size:12px; color:#8A8F96; font-weight:600;">College</span><span style="font-size:14.5px; font-weight:600;">Jabalpur</span></div>
+        <div class="field" style="gap:3px;"><span style="font-size:12px; color:#8A8F96; font-weight:600;">Roll No.</span><span style="font-size:14.5px; font-weight:600;">[ROLL NUMBER]</span></div>
+        <div class="field" style="gap:3px;"><span style="font-size:12px; color:#8A8F96; font-weight:600;">Submitted On</span><span style="font-size:14.5px; font-weight:600;">02 Sep 2026</span></div>
+        <div class="field" style="gap:3px;"><span style="font-size:12px; color:#8A8F96; font-weight:600;">Payment</span><span style="font-size:14.5px; font-weight:600;">Offline — Received</span></div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:14px; flex-wrap:wrap;">
+      <button class="btn btn-outline" onclick="alert('Prototype only — nothing to download.')">Download Acknowledgement</button>
+      <button class="btn btn-primary" onclick="nav('screen-main')">Back to Home</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCREEN: SCRUTINY OFFICER INBOX ============ -->
+<section class="screen so2-body" id="screen-so-queue">
+  <div class="so2-navbar">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div class="so2-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="#C79A3F"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.9-6.3 3.9 1.7-7L2 9.2l7.1-.6z"/></svg></div>
+      <div style="display:flex; flex-direction:column; gap:1px;">
+        <span style="font-size:15px; font-weight:700; color:#fff;">MPSVC Back-Office</span>
+        <span style="font-size:11.5px; color:#8D96AC;">Office User Portal</span>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:1px;">
+        <span style="font-size:13.5px; font-weight:700; color:#fff;">Ramesh Ahirwar</span>
+        <span style="font-size:11.5px; color:#8D96AC;">Scrutiny Officer · MPSVC Bhopal</span>
+      </div>
+      <div class="so2-avatar">RA</div>
+      <button class="back" style="width:30px; height:30px; padding:0; background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;" onclick="nav('screen-main')" title="Logout">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8D96AC" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:24px; padding:32px; align-items:flex-start; flex-wrap:wrap;">
+    <div style="width:260px; flex-shrink:0; display:flex; flex-direction:column; gap:16px;">
+      <div class="so2-card" style="padding:8px; display:flex; flex-direction:column; gap:4px;">
+        <a href="#" class="so2-navlink active" onclick="return false;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Inbox
+        </a>
+        <a href="#" class="so2-navlink" onclick="nav('screen-so-search'); return false;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          Dashboard
+        </a>
+      </div>
+    </div>
+
+    <div style="flex-grow:1; display:flex; flex-direction:column; gap:24px; min-width:0;">
+      <div>
+        <span class="so2-eyebrow">Scrutiny Officer</span>
+        <h1 style="font-size:32px; color:#1B2333; margin:6px 0 8px;">Scrutiny Officer Dashboard</h1>
+        <p style="margin:0; font-size:14.5px; color:#6B6656;">Confirm offline payments, verify applications, and issue certificates once approved.</p>
+      </div>
+
+      <div class="so2-card" style="padding:20px 24px; display:flex; flex-direction:column; gap:14px;">
+        <span style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:800; color:#6B6656; letter-spacing:0.6px; text-transform:uppercase;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A9752B" stroke-width="2.2"><path d="M22 3H2l8 9.5V19l4 2v-8.5z"/></svg>
+          Filter by Service Type
+        </span>
+        <div id="so2-service-pills" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+      </div>
+
+      <div id="so2-stat-cards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:16px;"></div>
+
+      <div class="so2-card" style="overflow:hidden;">
+        <div style="display:flex; border-bottom:1px solid #E7E1D2; padding:0 22px;">
+          <button type="button" class="so2-tab active" id="so2-tab-pending" onclick="setInboxTab('pending')">Pending <span class="count" id="so2-tab-pending-count"></span></button>
+          <button type="button" class="so2-tab" id="so2-tab-all" onclick="setInboxTab('all')">All <span class="count" id="so2-tab-all-count"></span></button>
+        </div>
+        <div class="so2-table-wrap" style="overflow-x:auto;">
+          <div class="so2-table-header" style="min-width:1040px;">
+            <div>APPLICANT</div><div>SERVICE TYPE</div><div>STATUS</div><div>SUBMITTED ON</div><div>APPLICATION ID</div><div></div>
+          </div>
+          <div id="so2-table-body" style="min-width:1040px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCREEN: SCRUTINY OFFICER SEARCH & REPORTS ============ -->
+<section class="screen so2-body" id="screen-so-search">
+  <div class="so2-navbar">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div class="so2-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="#C79A3F"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.9-6.3 3.9 1.7-7L2 9.2l7.1-.6z"/></svg></div>
+      <div style="display:flex; flex-direction:column; gap:1px;">
+        <span style="font-size:15px; font-weight:700; color:#fff;">MPSVC Back-Office</span>
+        <span style="font-size:11.5px; color:#8D96AC;">Office User Portal</span>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:1px;">
+        <span style="font-size:13.5px; font-weight:700; color:#fff;">Ramesh Ahirwar</span>
+        <span style="font-size:11.5px; color:#8D96AC;">Scrutiny Officer · MPSVC Bhopal</span>
+      </div>
+      <div class="so2-avatar">RA</div>
+      <button class="back" style="width:30px; height:30px; padding:0; background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;" onclick="nav('screen-main')" title="Logout">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8D96AC" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:24px; padding:32px; align-items:flex-start; flex-wrap:wrap;">
+    <div style="width:260px; flex-shrink:0; display:flex; flex-direction:column; gap:16px;">
+      <div class="so2-card" style="padding:8px; display:flex; flex-direction:column; gap:4px;">
+        <a href="#" class="so2-navlink" onclick="nav('screen-so-queue'); return false;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Inbox
+        </a>
+        <a href="#" class="so2-navlink active" onclick="return false;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          Dashboard
+        </a>
+      </div>
+    </div>
+
+    <div style="flex-grow:1; display:flex; flex-direction:column; gap:24px; min-width:0;">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+        <div>
+          <span class="so2-eyebrow">Office Overview</span>
+          <h1 style="font-size:32px; color:#1B2333; margin:6px 0 8px;">Search &amp; Reports</h1>
+          <p style="margin:0; font-size:14.5px; color:#6B6656;">Look up any application, or scan current office load at a glance.</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="so2-btn" onclick="alert('Prototype only — nothing to print.')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1B2333" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print / PDF
+          </button>
+          <button class="so2-btn" onclick="alert('Prototype only — nothing to export.')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1B2333" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Export Excel
+          </button>
+        </div>
+      </div>
+
+      <div id="so2-search-stat-cards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px;"></div>
+      <div class="so2-card" style="padding:12px 20px; font-size:12.5px; color:#8A8471;">Certificate and dispatch stages aren't modeled in this prototype yet — those numbers will populate once the Approving Authority and certificate-issuance screens are built.</div>
+
+      <div class="so2-card" style="padding:22px 24px; display:flex; flex-direction:column; gap:18px;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px;">
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label>Application ID / Registration No. / Applicant Name</label>
+            <input type="text" id="so2-search-input" placeholder="Search..." oninput="applySearchFilters()">
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label>Status</label>
+            <select id="so2-search-status" onchange="applySearchFilters()">
+              <option value="">All statuses</option>
+              <option value="new">Pending at Scrutiny Officer</option>
+              <option value="under_review">Awaiting Payment Confirmation</option>
+              <option value="reverted">Sent Back</option>
+              <option value="forwarded">Forwarded / Pending Approval</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label>Submitted Date Range</label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="date"><span style="color:#8A8471;">–</span><input type="date">
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid #EFEBDE; padding-top:16px; display:flex; flex-direction:column; gap:12px;">
+          <span style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:800; color:#6B6656; letter-spacing:0.5px; text-transform:uppercase;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A9752B" stroke-width="2.2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="6" r="1.6" fill="#A9752B" stroke="none"/><circle cx="15" cy="12" r="1.6" fill="#A9752B" stroke="none"/><circle cx="9" cy="18" r="1.6" fill="#A9752B" stroke="none"/></svg>
+            Columns
+          </span>
+          <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:center;">
+            <span class="so2-col-check locked"><input type="checkbox" checked disabled>Name</span>
+            <label class="so2-col-check"><input type="checkbox" id="col-type" checked onchange="applySearchFilters()">Type of Registration</label>
+            <label class="so2-col-check"><input type="checkbox" id="col-father" checked onchange="applySearchFilters()">Father's Name</label>
+            <label class="so2-col-check"><input type="checkbox" id="col-email" checked onchange="applySearchFilters()">Email ID</label>
+            <label class="so2-col-check"><input type="checkbox" id="col-submitted" checked onchange="applySearchFilters()">Submitted On</label>
+            <label class="so2-col-check"><input type="checkbox" id="col-address" checked onchange="applySearchFilters()">Preferred Address</label>
+            <label class="so2-col-check"><input type="checkbox" id="col-regno" onchange="applySearchFilters()">Registration No.</label>
+            <button class="so2-btn" style="height:32px; padding:0 12px; font-size:12.5px;" onclick="alert('Prototype only — no custom columns available yet.')">+ Add Column</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="so2-card" style="overflow:hidden;">
+        <div id="so2-search-count" style="padding:14px 22px; font-size:12.5px; color:#8A8471; border-bottom:1px solid #E7E1D2;"></div>
+        <div style="overflow-x:auto;">
+          <div id="so2-search-header" class="so2-table-header" style="min-width:1100px;"></div>
+          <div id="so2-search-body" style="min-width:1100px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCREEN: SCRUTINY OFFICER REVIEW ============ -->
+<section class="screen off-body" id="screen-so-review">
+  <div class="off-topbar">
+    <div style="display:flex; align-items:center; gap:18px;">
+      <h1>MPVC — Officer Portal</h1>
+      <button class="back" style="color:#AEB6C4;" onclick="nav('screen-so-queue')">← Back to Queue</button>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <span class="off-role-badge">Scrutiny Officer</span>
+      <span style="font-size:13px; color:#fff; font-weight:600;">R. Malhotra</span>
+    </div>
+  </div>
+
+  <div class="page-pad" style="max-width:1100px; margin:0 auto; padding-top:32px; display:flex; flex-direction:column; gap:22px;">
+
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <h2 style="font-size:24px;" id="so-review-name">Aditi Sharma</h2>
+        <span style="font-size:13.5px; color:#6B7280;" id="so-review-meta">APP-2026-MPVC-004821 · Provisional Registration · B.V.Sc. &amp; A.H. · Jabalpur · Submitted 02 Sep 2026</span>
+      </div>
+      <span class="badge" id="so-header-badge" style="background:#FFF4E5;color:#8A5A00;border-color:#F0B961;">Under Review</span>
+    </div>
+
+    <!-- PAYMENT VERIFICATION -->
+    <div class="off-section">
+      <span class="off-section-title">Payment Verification — Offline Payment</span>
+
+      <div id="so-payment-intake" style="display:flex; flex-direction:column; gap:18px;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:18px;">
+          <div style="display:flex; flex-direction:column; gap:3px;"><span style="font-size:11.5px; color:#6B7280; font-weight:700;">CHEQUE / DD NO.</span><span style="font-size:14.5px; font-weight:600;" id="so-pay-cheque">445210</span></div>
+          <div style="display:flex; flex-direction:column; gap:3px;"><span style="font-size:11.5px; color:#6B7280; font-weight:700;">BANK NAME</span><span style="font-size:14.5px; font-weight:600;" id="so-pay-bank">State Bank of India</span></div>
+          <div style="display:flex; flex-direction:column; gap:3px;"><span style="font-size:11.5px; color:#6B7280; font-weight:700;">PAYMENT DATE</span><span style="font-size:14.5px; font-weight:600;" id="so-pay-date">30 Aug 2026</span></div>
+          <div style="display:flex; flex-direction:column; gap:3px;"><span style="font-size:11.5px; color:#6B7280; font-weight:700;">AMOUNT</span><span style="font-size:14.5px; font-weight:600;" id="so-pay-amount">₹ 1,500</span></div>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <button class="btn btn-success" onclick="chooseReceived()">✓ Payment Received</button>
+          <button class="btn btn-danger" onclick="chooseNotReceived()">✗ Payment Not Received</button>
+        </div>
+      </div>
+
+      <div id="so-received-confirm-form" style="display:none; flex-direction:column; gap:16px; max-width:480px;">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label>Verification remark *</label>
+          <input type="text" id="so-received-remark" placeholder="e.g. Confirmed via bank passbook entry / UTR match" oninput="onReceivedRemarkChange(this.value)">
+        </div>
+        <div style="display:flex; gap:12px;">
+          <button class="btn btn-navy btn-sm" id="so-confirm-received" disabled onclick="confirmPaymentReceived()">Confirm Payment Received</button>
+          <button class="btn btn-outline btn-sm" onclick="cancelPaymentChoice()">Cancel</button>
+        </div>
+      </div>
+
+      <div id="so-payment-issue-form" style="display:none; flex-direction:column; gap:16px; max-width:480px;">
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label>Reason payment was not received *</label>
+          <select id="so-payment-reason" onchange="onPaymentReasonChange(this.value)">
+            <option value="">Select a reason</option>
+            <option value="bounced">Cheque Bounced</option>
+            <option value="wrong_number">Wrong Cheque / DD Number</option>
+            <option value="wrong_account">Incorrect Bank Account</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div id="so-payment-other-wrap" style="display:none; flex-direction:column; gap:6px;">
+          <label>Please specify</label>
+          <input type="text" id="so-payment-other" placeholder="Describe the issue" oninput="onPaymentReasonOtherChange(this.value)">
+        </div>
+        <div style="display:flex; gap:12px;">
+          <button class="btn btn-navy btn-sm" id="so-save-payment-issue" disabled onclick="savePaymentIssue()">Save &amp; Notify Applicant</button>
+          <button class="btn btn-outline btn-sm" onclick="cancelPaymentChoice()">Cancel</button>
+        </div>
+      </div>
+
+      <div id="so-payment-received-note" class="off-note off-note-ok" style="display:none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#145C4B" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><path d="M20 6 9 17l-5-5"/></svg>
+        <span id="so-payment-received-text">Payment confirmed as received. You can now forward, revert, or reject this application in Processing Decision below.</span>
+      </div>
+
+      <div id="so-payment-final-note" class="off-note off-note-danger" style="display:none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C23B22" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/></svg>
+        <span id="so-payment-final-text">Applicant notified — payment issue recorded.</span>
+      </div>
+    </div>
+
+    <div id="so-full-review" style="display:flex; flex-direction:column; gap:22px;">
+
+      <div class="off-section"><span class="off-section-title">Personal Details</span><div id="so-personal"></div></div>
+      <div class="off-section"><span class="off-section-title">Residential Address</span><div id="so-residential"></div></div>
+      <div class="off-section"><span class="off-section-title">Permanent Address</span><div id="so-permanent"></div></div>
+      <div class="off-section"><span class="off-section-title">Contact &amp; Qualification</span><div id="so-contactqual"></div></div>
+      <div class="off-section"><span class="off-section-title">Documents</span><div id="so-documents"></div></div>
+
+      <!-- ACTION PANEL -->
+      <div class="off-section">
+        <span class="off-section-title">Processing Decision</span>
+
+        <div id="so-locked-note" class="off-note" style="background:#F1F2F4; border:1.5px dashed #C7CBD1; color:#6B7280;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          <span>Confirm the payment status above before you can forward, revert, or reject this application.</span>
+        </div>
+
+        <div id="so-action-buttons" style="display:none; flex-direction:column; gap:16px;">
+          <span id="so-flag-summary" style="display:none; font-size:13px; color:#8A5A00; font-weight:700;"></span>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <button class="btn btn-navy" onclick="openForward()">Forward to Approving Authority</button>
+            <button class="btn btn-outline" id="so-revert-btn" disabled onclick="openRevert()">Revert to Applicant</button>
+            <button class="btn btn-danger" onclick="openReject()">Reject Application</button>
+          </div>
+        </div>
+
+        <div id="so-forward-panel" style="display:none; flex-direction:column; gap:14px; max-width:560px;">
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label>Comment for Approving Authority *</label>
+            <textarea class="off-textarea" id="so-forward-comment" placeholder="Summarize your review and why this application is fit to forward" oninput="onForwardCommentChange(this.value)"></textarea>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label>Attach supporting document (optional)</label>
+            <div class="upload-box"><span style="font-size:13px; color:var(--ink-soft);">Choose file — <em>No file chosen</em> (PDF, max 5 MB)</span></div>
+          </div>
+          <div style="display:flex; gap:12px;">
+            <button class="btn btn-navy btn-sm" id="so-forward-confirm" disabled onclick="confirmForward()">Confirm &amp; Forward</button>
+            <button class="btn btn-outline btn-sm" onclick="cancelAction()">Cancel</button>
+          </div>
+        </div>
+
+        <div id="so-revert-panel" style="display:none; flex-direction:column; gap:14px; max-width:560px;">
+          <div class="off-note off-note-warn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/></svg>
+            <span id="so-revert-note-text">The applicant will only be able to edit the field(s) you flagged, with your remarks shown alongside each. All other fields stay locked.</span>
+          </div>
+          <div style="display:flex; gap:12px;">
+            <button class="btn btn-navy btn-sm" onclick="confirmRevert()">Confirm Revert</button>
+            <button class="btn btn-outline btn-sm" onclick="cancelAction()">Cancel</button>
+          </div>
+        </div>
+
+        <div id="so-reject-panel" style="display:none; flex-direction:column; gap:14px; max-width:560px;">
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label>Reason for rejection *</label>
+            <textarea class="off-textarea" id="so-reject-comment" placeholder="Explain why this application is being rejected" oninput="onRejectCommentChange(this.value)"></textarea>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label>Attach supporting document (optional)</label>
+            <div class="upload-box"><span style="font-size:13px; color:var(--ink-soft);">Choose file — <em>No file chosen</em> (PDF, max 5 MB)</span></div>
+          </div>
+          <div style="display:flex; gap:12px;">
+            <button class="btn btn-danger-solid btn-sm" id="so-reject-confirm" disabled onclick="confirmReject()">Confirm Reject</button>
+            <button class="btn btn-outline btn-sm" onclick="cancelAction()">Cancel</button>
+          </div>
+        </div>
+
+        <div id="so-done-forward" class="off-note off-note-ok" style="display:none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#145C4B" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><path d="M20 6 9 17l-5-5"/></svg>
+          <span>Forwarded to the Approving Authority for final approval.</span>
+        </div>
+        <div id="so-done-revert" class="off-note off-note-warn" style="display:none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/></svg>
+          <span id="so-done-revert-text">Reverted to the applicant.</span>
+        </div>
+        <div id="so-done-reject" class="off-note off-note-danger" style="display:none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C23B22" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/></svg>
+          <span>Application rejected. The applicant has been notified and may submit a new application.</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<script>
+function nav(id){
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function onStateChange(val){
+  var mpBox = document.getElementById('mp-ok');
+  var otherBox = document.getElementById('other-state');
+  if(val === 'Madhya Pradesh'){
+    mpBox.style.display = 'flex';
+    otherBox.style.display = 'none';
+  } else if(val){
+    otherBox.style.display = 'flex';
+    mpBox.style.display = 'none';
+    document.getElementById('other-state-text').textContent =
+      'Online registration for ' + val + ' colleges is not handled by this portal. Please contact the veterinary council for ' + val + ' directly.';
+  } else {
+    mpBox.style.display = 'none';
+    otherBox.style.display = 'none';
+  }
+}
+
+function pickRegType(choice){
+  var provCard = document.getElementById('card-provisional');
+  var transCard = document.getElementById('card-transfer');
+  var provDot = document.getElementById('dot-provisional');
+  var transDot = document.getElementById('dot-transfer');
+  provCard.style.borderColor = ''; provCard.style.boxShadow = '';
+  transCard.style.borderColor = ''; transCard.style.boxShadow = '';
+  provDot.style.background = 'transparent'; provDot.style.borderColor = 'var(--border)';
+  transDot.style.background = 'transparent'; transDot.style.borderColor = 'var(--border)';
+
+  if(choice === 'provisional'){
+    provCard.style.borderColor = 'var(--accent)'; provCard.style.boxShadow = '0 0 0 1px var(--accent)';
+    provDot.style.background = 'var(--accent)'; provDot.style.borderColor = 'var(--accent)';
+    document.getElementById('regtype-provisional-cta').style.display = 'block';
+    document.getElementById('regtype-transfer-note').style.display = 'none';
+  } else {
+    transCard.style.borderColor = 'var(--accent)'; transCard.style.boxShadow = '0 0 0 1px var(--accent)';
+    transDot.style.background = 'var(--accent)'; transDot.style.borderColor = 'var(--accent)';
+    document.getElementById('regtype-transfer-note').style.display = 'block';
+    document.getElementById('regtype-provisional-cta').style.display = 'none';
+  }
+}
+
+var otpState = { mobile:false, email:false, continue:false };
+
+function sendOtp(kind){
+  document.getElementById(kind === 'continue' ? 'c-mobile-otp-row' : 'v-'+kind+'-otp-row').style.display = 'flex';
+}
+function verifyOtp(kind){
+  otpState[kind] = true;
+  if(kind === 'continue'){
+    document.getElementById('c-mobile-verified').style.display = 'flex';
+    document.getElementById('c-mobile').disabled = true;
+    document.getElementById('c-mobile-send').style.display = 'none';
+    document.getElementById('c-mobile-otp-row').style.display = 'none';
+    document.getElementById('c-options').style.display = 'flex';
+  } else {
+    document.getElementById('v-'+kind+'-verified').style.display = 'flex';
+    document.getElementById('v-'+kind).disabled = true;
+    document.getElementById('v-'+kind+'-send').style.display = 'none';
+    document.getElementById('v-'+kind+'-otp-row').style.display = 'none';
+    if(otpState.mobile && otpState.email){
+      var btn = document.getElementById('v-continue');
+      btn.disabled = false;
+      btn.classList.remove('btn-disabled');
+      btn.classList.add('btn-primary');
+    }
+  }
+}
+
+var sameAddressChecked = false;
+function toggleSameAddress(checked){
+  sameAddressChecked = checked;
+  document.getElementById('perm-detail').style.display = checked ? 'none' : 'flex';
+  document.getElementById('same-address-note').style.display = checked ? 'flex' : 'none';
+}
+
+var permInMPState = '';
+function setPermInMP(val){
+  permInMPState = val;
+  document.getElementById('perm-mp-yes').classList.toggle('pill-on', val === 'yes');
+  document.getElementById('perm-mp-no').classList.toggle('pill-on', val === 'no');
+  document.querySelectorAll('.perm-mp-field').forEach(function(el){ el.style.display = val === 'yes' ? 'flex' : 'none'; });
+  document.querySelectorAll('.perm-text-field').forEach(function(el){ el.style.display = val === 'no' ? 'flex' : 'none'; });
+}
+
+function setPaymentType(val){
+  document.getElementById('pay-offline').classList.toggle('pill-on', val === 'offline');
+  document.getElementById('pay-online').classList.toggle('pill-on', val === 'online');
+  document.getElementById('pay-online-note').style.display = val === 'online' ? 'block' : 'none';
+  document.getElementById('pay-offline-fields').style.display = val === 'offline' ? 'flex' : 'none';
+}
+setPaymentType('offline');
+
+/* ================= SCRUTINY OFFICER ================= */
+
+var SO2_APPS = [
+  { ref:'MPSVC-2026-0142', applicant:'Aditi Sharma', regType:'Provisional', serviceType:'Provisional Registration', submitted:'02 Sep 2026', statusKey:'under_review', paymentResolved:false, fatherName:'Rajesh Sharma', email:'aditi.sharma142@example.in', address:'Ward 12, Napier Town, Jabalpur, MP', regNo:'—' },
+  { ref:'MPSVC-2026-0139', applicant:'Rohit Verma', regType:'Provisional', serviceType:'Provisional Registration', submitted:'28 Aug 2026', statusKey:'new', paymentResolved:true, fatherName:'Suresh Verma', email:'rohit.verma@example.in', address:'Nayapura, Mhow, MP', regNo:'—' },
+  { ref:'MPSVC-2026-0135', applicant:'Simran Kaur', regType:'Transfer-In', serviceType:'Transfer-In', submitted:'25 Aug 2026', statusKey:'forwarded', paymentResolved:true, fatherName:'Gurpreet Singh', email:'simran.kaur@example.in', address:'Civil Lines, Rewa, MP', regNo:'MPVC/2019/00876' },
+  { ref:'MPSVC-2026-0133', applicant:'Manish Tiwari', regType:'Provisional', serviceType:'Provisional Registration', submitted:'20 Aug 2026', statusKey:'reverted', paymentResolved:true, fatherName:'Om Prakash Tiwari', email:'manish.tiwari@example.in', address:'Ranjhi, Jabalpur, MP', regNo:'—' },
+  { ref:'MPSVC-2026-0128', applicant:'Neha Chouhan', regType:'Provisional', serviceType:'Provisional Registration', submitted:'15 Aug 2026', statusKey:'reverted', paymentResolved:true, fatherName:'Devendra Chouhan', email:'neha.chouhan@example.in', address:'Sirmour Chowk, Rewa, MP', regNo:'—' },
+  { ref:'MPSVC-2026-0121', applicant:'Arjun Mehta', regType:'Transfer-In', serviceType:'Transfer-In', submitted:'10 Aug 2026', statusKey:'rejected', paymentResolved:true, fatherName:'Vinod Mehta', email:'arjun.mehta@example.in', address:'Manik Bagh, Mhow, MP', regNo:'MPVC/2020/01142' },
+  { ref:'MPSVC-2026-0117', applicant:'Priya Nair', regType:'Provisional', serviceType:'Provisional Registration', submitted:'05 Aug 2026', statusKey:'new', paymentResolved:false, fatherName:'Suresh Nair', email:'priya.nair@example.in', address:'Wright Town, Jabalpur, MP', regNo:'—' }
+];
+var SO2_AMBER = { bg:'background:#FBF0D6;color:#7A5115;', dot:'background:#C79A3F;' };
+var SO2_GREEN = { bg:'background:#E4EFE8;color:#1E5E45;', dot:'background:#1E5E45;' };
+var SO2_ORANGE = { bg:'background:#FBE5D8;color:#8C3B2E;', dot:'background:#8C3B2E;' };
+var SO2_RED = { bg:'background:#FBE1DE;color:#A03530;', dot:'background:#A03530;' };
+function so2StatusInfo(a){
+  if(a.statusKey === 'forwarded') return { text:'Forwarded to Approving Authority', style:SO2_GREEN };
+  if(a.statusKey === 'reverted') return { text:'Sent Back', style:SO2_ORANGE };
+  if(a.statusKey === 'rejected') return { text:'Rejected', style:SO2_RED };
+  if(!a.paymentResolved) return { text:'Awaiting Payment Confirmation', style:SO2_AMBER };
+  return { text:'Pending at Scrutiny Officer', style:SO2_AMBER };
+}
+
+var so2ServiceFilter = '';
+var so2InboxTab = 'pending';
+
+function so2ByService(regType){ return SO2_APPS.filter(function(a){ return regType === '' || a.regType === regType; }); }
+
+function renderInbox(){
+  var services = [
+    { key:'', label:'All Service Types' },
+    { key:'Provisional', label:'Provisional Registration' },
+    { key:'Transfer-In', label:'Transfer-In' }
+  ];
+  document.getElementById('so2-service-pills').innerHTML = services.map(function(t){
+    var count = so2ByService(t.key).length;
+    var active = so2ServiceFilter === t.key ? ' active' : '';
+    return '<button type="button" class="so2-pill'+active+'" onclick="setServiceFilter(\''+t.key+'\')">'+t.label+' <span class="count">'+count+'</span></button>';
+  }).join('');
+
+  var filtered = so2ByService(so2ServiceFilter);
+  var pending = filtered.filter(function(a){ return a.statusKey === 'new' || a.statusKey === 'under_review'; });
+
+  var stats = [
+    { label:'Awaiting Payment', n: filtered.filter(function(a){ return !a.paymentResolved; }).length, color:'#8C3B2E' },
+    { label:'Pending at Scrutiny Officer', n: filtered.filter(function(a){ return (a.statusKey === 'new' || a.statusKey === 'under_review') && a.paymentResolved; }).length, color:'#8C3B2E' },
+    { label:'Sent Back', n: filtered.filter(function(a){ return a.statusKey === 'reverted'; }).length, color:'#8C3B2E' },
+    { label:'Rejected', n: filtered.filter(function(a){ return a.statusKey === 'rejected'; }).length, color:'#A03530' },
+    { label:'Forwarded', n: filtered.filter(function(a){ return a.statusKey === 'forwarded'; }).length, color:'#1E5E45' }
+  ];
+  document.getElementById('so2-stat-cards').innerHTML = stats.map(function(s){
+    return '<div class="so2-card" style="padding:22px 20px; display:flex; flex-direction:column; gap:6px;">'+
+      '<span class="so2-stat-num" style="color:'+s.color+';">'+s.n+'</span>'+
+      '<span style="font-size:13px; color:#6B6656; font-weight:600;">'+s.label+'</span></div>';
+  }).join('');
+
+  document.getElementById('so2-tab-pending-count').textContent = pending.length;
+  document.getElementById('so2-tab-all-count').textContent = filtered.length;
+  document.getElementById('so2-tab-pending').classList.toggle('active', so2InboxTab === 'pending');
+  document.getElementById('so2-tab-all').classList.toggle('active', so2InboxTab === 'all');
+
+  var rows = so2InboxTab === 'pending' ? pending : filtered;
+  var body = rows.map(function(a){
+    var info = so2StatusInfo(a);
+    return '<div class="so2-table-row">'+
+      '<div style="font-weight:600;">'+a.applicant+'</div>'+
+      '<div style="color:#4B4636;">'+a.serviceType+'</div>'+
+      '<div><span class="so2-status-badge" style="'+info.style.bg+'"><span class="so2-status-dot" style="'+info.style.dot+'"></span>'+info.text+'</span></div>'+
+      '<div style="color:#4B4636;">'+a.submitted+'</div>'+
+      '<div style="font-weight:700; color:#2A5C99;">'+a.ref+'</div>'+
+      '<div><button class="so2-btn-review" onclick="openReview(\''+a.ref+'\')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>Review</button></div>'+
+    '</div>';
+  }).join('') || '<div style="padding:44px; text-align:center; font-size:13.5px; color:#8A8471;">No applications match this filter.</div>';
+  document.getElementById('so2-table-body').innerHTML = body;
+}
+function setServiceFilter(key){ so2ServiceFilter = key; renderInbox(); }
+function setInboxTab(tab){ so2InboxTab = tab; renderInbox(); }
+
+function renderSearchStats(){
+  var stats = [
+    { label:'Pending Payment Confirmation', n: SO2_APPS.filter(function(a){ return a.statusKey === 'under_review' || (a.statusKey === 'new' && !a.paymentResolved); }).length, color:'#8C3B2E' },
+    { label:'Pending at Scrutiny Officer', n: SO2_APPS.filter(function(a){ return a.statusKey === 'new' || a.statusKey === 'under_review'; }).length, color:'#8C3B2E' },
+    { label:'Pending Approval', n: SO2_APPS.filter(function(a){ return a.statusKey === 'forwarded'; }).length, color:'#1B2333' },
+    { label:'Approved — Pending Certificate Upload', n: 0, color:'#1E5E45' },
+    { label:'Closed — Certificate Issued', n: 0, color:'#1E5E45' },
+    { label:'Dispatched', n: 0, color:'#1B2333' }
+  ];
+  document.getElementById('so2-search-stat-cards').innerHTML = stats.map(function(s){
+    return '<div class="so2-card" style="padding:20px 18px; display:flex; flex-direction:column; gap:6px;">'+
+      '<span class="so2-stat-num" style="font-size:26px; color:'+s.color+';">'+s.n+'</span>'+
+      '<span style="font-size:12.5px; color:#6B6656; font-weight:600; line-height:1.3;">'+s.label+'</span></div>';
+  }).join('');
+}
+
+function applySearchFilters(){
+  var q = document.getElementById('so2-search-input').value.trim().toLowerCase();
+  var status = document.getElementById('so2-search-status').value;
+  var colType = document.getElementById('col-type').checked;
+  var colFather = document.getElementById('col-father').checked;
+  var colEmail = document.getElementById('col-email').checked;
+  var colSubmitted = document.getElementById('col-submitted').checked;
+  var colAddress = document.getElementById('col-address').checked;
+  var colRegNo = document.getElementById('col-regno').checked;
+
+  var rows = SO2_APPS.filter(function(a){
+    return (status === '' || a.statusKey === status) &&
+      (q === '' || a.applicant.toLowerCase().indexOf(q) !== -1 || a.ref.toLowerCase().indexOf(q) !== -1 || a.regNo.toLowerCase().indexOf(q) !== -1);
+  });
+
+  var colTemplate = ['1.2fr'];
+  if(colType) colTemplate.push('1.3fr');
+  if(colFather) colTemplate.push('1.2fr');
+  if(colEmail) colTemplate.push('1.5fr');
+  if(colSubmitted) colTemplate.push('1fr');
+  if(colAddress) colTemplate.push('1.8fr');
+  if(colRegNo) colTemplate.push('1.3fr');
+  var gridStyle = 'display:grid; grid-template-columns:'+colTemplate.join(' ')+'; align-items:center;';
+
+  var headerCells = ['<div>NAME</div>'];
+  if(colType) headerCells.push('<div>TYPE OF REGISTRATION</div>');
+  if(colFather) headerCells.push('<div>FATHER\'S NAME</div>');
+  if(colEmail) headerCells.push('<div>EMAIL ID</div>');
+  if(colSubmitted) headerCells.push('<div>SUBMITTED ON</div>');
+  if(colAddress) headerCells.push('<div>PREFERRED ADDRESS</div>');
+  if(colRegNo) headerCells.push('<div>REGISTRATION NO.</div>');
+  var headerEl = document.getElementById('so2-search-header');
+  headerEl.setAttribute('style', gridStyle + 'background:#FAF8F2; border-bottom:1px solid #E7E1D2; min-width:1100px;');
+  headerEl.innerHTML = headerCells.map(function(h){ return h.replace('<div>', '<div style="padding:12px 22px; font-size:11px; font-weight:800; color:#8A8471;">'); }).join('');
+
+  document.getElementById('so2-search-count').textContent = rows.length + ' application(s)';
+  var body = rows.map(function(a){
+    var cells = ['<div style="padding:14px 22px; font-weight:600;">'+a.applicant+'</div>'];
+    if(colType) cells.push('<div style="padding:14px 22px;">'+a.serviceType+'</div>');
+    if(colFather) cells.push('<div style="padding:14px 22px;">'+a.fatherName+'</div>');
+    if(colEmail) cells.push('<div style="padding:14px 22px;">'+a.email+'</div>');
+    if(colSubmitted) cells.push('<div style="padding:14px 22px;">'+a.submitted+'</div>');
+    if(colAddress) cells.push('<div style="padding:14px 22px;">'+a.address+'</div>');
+    if(colRegNo) cells.push('<div style="padding:14px 22px;">'+a.regNo+'</div>');
+    return '<div style="'+gridStyle+'border-bottom:1px solid #F0EDE2; color:#4B4636; font-size:13.5px; min-width:1100px;">'+cells.join('')+'</div>';
+  }).join('') || '<div style="padding:44px; text-align:center; font-size:13.5px; color:#8A8471;">No applications match this search.</div>';
+  document.getElementById('so2-search-body').innerHTML = body;
+}
+
+renderInbox();
+renderSearchStats();
+applySearchFilters();
+
+/* ---- Application review ---- */
+// Field data is keyed by application ref so every row in the Scrutiny Officer inbox can
+// open its own real review screen (see openReview()) instead of everyone sharing one
+// hardcoded record. The pre-seeded demo applications below fall back to the Aditi Sharma
+// dataset; a real citizen submission (see submitApplicationForm()) gets its own entry.
+var APP_FIELDS = {
+  'MPSVC-2026-0142': [
+    { id:'firstName', section:'personal', label:'First Name', value:'Aditi' },
+    { id:'middleName', section:'personal', label:'Middle Name', value:'—' },
+    { id:'lastName', section:'personal', label:'Last Name', value:'Sharma' },
+    { id:'fatherName', section:'personal', label:"Father's Name", value:'Rajesh Sharma' },
+    { id:'dob', section:'personal', label:'Date of Birth', value:'14 Jun 2002' },
+    { id:'gender', section:'personal', label:'Gender', value:'Female' },
+
+    { id:'resAddress', section:'residential', label:'Address', value:'12, Shastri Nagar, Ranjhi' },
+    { id:'resCity', section:'residential', label:'City / Town / Village', value:'Jabalpur' },
+    { id:'resPost', section:'residential', label:'Post', value:'Ranjhi' },
+    { id:'resBlock', section:'residential', label:'Block / Tehsil', value:'Jabalpur' },
+    { id:'resState', section:'residential', label:'State', value:'Madhya Pradesh' },
+    { id:'resDistrict', section:'residential', label:'District', value:'Jabalpur' },
+    { id:'resPin', section:'residential', label:'Pin Code', value:'482002' },
+
+    { id:'permAddress', section:'permanent', label:'Address', value:'12, Shastri Nagar, Ranjhi', hasHistory:true, oldValue:'45, Napier Town, Civil Lines' },
+    { id:'permCity', section:'permanent', label:'City / Town / Village', value:'Jabalpur' },
+    { id:'permState', section:'permanent', label:'State', value:'Madhya Pradesh' },
+    { id:'permDistrict', section:'permanent', label:'District', value:'Jabalpur' },
+    { id:'permPin', section:'permanent', label:'Pin Code', value:'482002' },
+
+    { id:'mobile1', section:'contactqual', label:'Mobile No. 1', value:'98XXXXXX10 (Verified)' },
+    { id:'email', section:'contactqual', label:'Email ID', value:'aditi.sharma@example.com (Verified)' },
+    { id:'rollNo', section:'contactqual', label:'Roll No.', value:'BVSC2026-00482' },
+    { id:'enrollNo', section:'contactqual', label:'University Enrollment No.', value:'NDVSU/2021/1187' },
+    { id:'college', section:'contactqual', label:'College', value:'College of Veterinary Science & Animal Husbandry, Jabalpur' },
+    { id:'passingYear', section:'contactqual', label:'Passing Year', value:'2026-2027' },
+
+    { id:'certUpload', section:'documents', label:'University / Course Completion Certificate', value:'certificate_aditi_sharma.pdf' },
+    { id:'photoUpload', section:'documents', label:'Photo', value:'photo_aditi.jpg' },
+    { id:'othersUpload', section:'documents', label:'Others', value:'Not uploaded' }
+  ]
+};
+Object.keys(APP_FIELDS).forEach(function(ref){ APP_FIELDS[ref].forEach(function(f){ f.flagged = false; f.remark = ''; }); });
+
+var APP_PAYMENT = {
+  'MPSVC-2026-0142': { cheque:'445210', bank:'State Bank of India', date:'30 Aug 2026', amount:'₹ 1,500' }
+};
+
+var DEFAULT_REVIEW_REF = 'MPSVC-2026-0142';
+var currentReviewRef = null;
+var soFields = APP_FIELDS[DEFAULT_REVIEW_REF];
+
+var REASON_LABELS = { bounced:'Cheque Bounced', wrong_number:'Wrong Cheque / DD Number', wrong_account:'Incorrect Bank Account', other:'Other' };
+var soPaymentStatus = null, soPaymentReason = '', soPaymentReasonOther = '', soPaymentFinalized = false;
+var soActionDone = null;
+
+function fieldsBySection(key){ return soFields.filter(function(f){ return f.section === key; }); }
+
+function renderFieldRow(f){
+  var btnClass = f.flagged ? 'flag-btn flagged' : 'flag-btn';
+  var btnLabel = f.flagged ? '✓ Flagged' : '⚑ Flag issue';
+  var historyHtml = f.hasHistory ? '<span class="history-note">↺ Previously: '+f.oldValue+' — corrected by applicant after an earlier revert</span>' : '';
+  var remarkHtml = f.flagged ? '<input type="text" class="remark-input" placeholder="What needs to be corrected here?" value="'+(f.remark||'').replace(/"/g,'&quot;')+'" oninput="setRemark(\''+f.id+'\', this.value)">' : '';
+  var valuePrefix = f.section === 'documents' ? '📄 ' : '';
+  return '<div class="field-row">'+
+    '<div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px;">'+
+      '<div style="display:flex; flex-direction:column; gap:3px;">'+
+        '<span class="field-label">'+f.label+'</span>'+
+        '<span class="field-value">'+valuePrefix+f.value+'</span>'+
+        historyHtml+
+      '</div>'+
+      '<button type="button" class="'+btnClass+'" onclick="toggleFlag(\''+f.id+'\')">'+btnLabel+'</button>'+
+    '</div>'+
+    remarkHtml+
+  '</div>';
+}
+function renderSection(sectionKey, containerId){
+  document.getElementById(containerId).innerHTML = fieldsBySection(sectionKey).map(renderFieldRow).join('');
+}
+function renderAllSections(){
+  renderSection('personal', 'so-personal');
+  renderSection('residential', 'so-residential');
+  renderSection('permanent', 'so-permanent');
+  renderSection('contactqual', 'so-contactqual');
+  renderSection('documents', 'so-documents');
+  updateActionPanelSummary();
+}
+function toggleFlag(id){
+  var f = soFields.find(function(x){ return x.id === id; });
+  f.flagged = !f.flagged;
+  renderAllSections();
+}
+function setRemark(id, val){
+  var f = soFields.find(function(x){ return x.id === id; });
+  f.remark = val;
+}
+function flaggedCount(){ return soFields.filter(function(f){ return f.flagged; }).length; }
+
+function updateActionPanelSummary(){
+  var n = flaggedCount();
+  var summary = document.getElementById('so-flag-summary');
+  if(n > 0){
+    summary.style.display = 'block';
+    summary.textContent = n + ' field(s) flagged for correction.';
+  } else {
+    summary.style.display = 'none';
+  }
+  document.getElementById('so-revert-btn').disabled = n === 0;
+}
+
+function updateHeaderBadge(text, style){
+  var el = document.getElementById('so-header-badge');
+  el.textContent = text;
+  el.setAttribute('style', style);
+}
+
+function soReviewBadgeInfo(statusKey){
+  if(statusKey === 'forwarded') return { text:'Forwarded to AA', style:'background:#E4EFEC;color:#145C4B;border-color:#BFE0D5;' };
+  if(statusKey === 'reverted') return { text:'Reverted — Details', style:'background:#FFF4E5;color:#8A5A00;border-color:#F0B961;' };
+  if(statusKey === 'rejected') return { text:'Rejected', style:'background:#FCEEEC;color:#C23B22;border-color:#F2C6BC;' };
+  return { text:'Under Review', style:'background:#FFF4E5;color:#8A5A00;border-color:#F0B961;' };
+}
+
+// Opens the review screen for one specific application from the inbox — loads that
+// application's own field data and payment details instead of the single hardcoded
+// record the prototype used to show for every row.
+function openReview(ref){
+  var app = SO2_APPS.find(function(a){ return a.ref === ref; });
+  if(!app) return;
+  currentReviewRef = ref;
+  soFields = APP_FIELDS[ref] || APP_FIELDS[DEFAULT_REVIEW_REF];
+  var pay = APP_PAYMENT[ref] || APP_PAYMENT[DEFAULT_REVIEW_REF];
+
+  document.getElementById('so-review-name').textContent = app.applicant;
+  document.getElementById('so-review-meta').textContent = app.ref + ' · ' + app.serviceType + ' · Submitted ' + app.submitted;
+  document.getElementById('so-pay-cheque').textContent = pay.cheque;
+  document.getElementById('so-pay-bank').textContent = pay.bank;
+  document.getElementById('so-pay-date').textContent = pay.date;
+  document.getElementById('so-pay-amount').textContent = pay.amount;
+
+  // Reset every payment-step and decision panel, then reveal only what matches this
+  // application's actual current state.
+  document.getElementById('so-received-confirm-form').style.display = 'none';
+  document.getElementById('so-payment-issue-form').style.display = 'none';
+  document.getElementById('so-payment-received-note').style.display = 'none';
+  document.getElementById('so-payment-final-note').style.display = 'none';
+  document.getElementById('so-received-remark').value = '';
+  document.getElementById('so-confirm-received').disabled = true;
+  document.getElementById('so-payment-reason').value = '';
+  document.getElementById('so-payment-other-wrap').style.display = 'none';
+  document.getElementById('so-save-payment-issue').disabled = true;
+  soReceivedRemark = ''; soPaymentStatus = null; soPaymentReason = ''; soPaymentReasonOther = ''; soPaymentFinalized = false;
+  hideAllActionPanels();
+  document.getElementById('so-done-forward').style.display = 'none';
+  document.getElementById('so-done-revert').style.display = 'none';
+  document.getElementById('so-done-reject').style.display = 'none';
+
+  if(app.statusKey === 'forwarded' || app.statusKey === 'reverted' || app.statusKey === 'rejected'){
+    document.getElementById('so-payment-intake').style.display = 'none';
+    unlockActionPanel();
+    document.getElementById('so-action-buttons').style.display = 'none';
+    if(app.statusKey === 'forwarded') document.getElementById('so-done-forward').style.display = 'flex';
+    if(app.statusKey === 'reverted'){
+      document.getElementById('so-done-revert-text').textContent = 'Reverted to the applicant — ' + flaggedCount() + ' field(s) marked for correction.';
+      document.getElementById('so-done-revert').style.display = 'flex';
+    }
+    if(app.statusKey === 'rejected') document.getElementById('so-done-reject').style.display = 'flex';
+  } else if(app.paymentResolved){
+    document.getElementById('so-payment-intake').style.display = 'none';
+    document.getElementById('so-payment-received-text').textContent =
+      'Payment confirmed as received. You can now forward, revert, or reject this application in Processing Decision below.';
+    document.getElementById('so-payment-received-note').style.display = 'flex';
+    unlockActionPanel();
+  } else {
+    document.getElementById('so-payment-intake').style.display = 'flex';
+    document.getElementById('so-locked-note').style.display = 'flex';
+    document.getElementById('so-action-buttons').style.display = 'none';
+  }
+
+  var badge = soReviewBadgeInfo(app.statusKey);
+  updateHeaderBadge(badge.text, badge.style);
+
+  renderAllSections();
+  nav('screen-so-review');
+}
+
+/* Payment verification */
+var soReceivedRemark = '';
+function chooseReceived(){
+  document.getElementById('so-payment-intake').style.display = 'none';
+  document.getElementById('so-received-confirm-form').style.display = 'flex';
+}
+function chooseNotReceived(){
+  document.getElementById('so-payment-intake').style.display = 'none';
+  document.getElementById('so-payment-issue-form').style.display = 'flex';
+}
+function cancelPaymentChoice(){
+  soPaymentStatus = null; soPaymentReason = ''; soPaymentReasonOther = ''; soReceivedRemark = '';
+  document.getElementById('so-received-confirm-form').style.display = 'none';
+  document.getElementById('so-payment-issue-form').style.display = 'none';
+  document.getElementById('so-payment-intake').style.display = 'flex';
+  document.getElementById('so-payment-reason').value = '';
+  document.getElementById('so-payment-other-wrap').style.display = 'none';
+  document.getElementById('so-received-remark').value = '';
+}
+function onReceivedRemarkChange(v){
+  soReceivedRemark = v;
+  document.getElementById('so-confirm-received').disabled = v.trim() === '';
+}
+function confirmPaymentReceived(){
+  soPaymentStatus = 'received';
+  document.getElementById('so-received-confirm-form').style.display = 'none';
+  document.getElementById('so-payment-received-text').textContent =
+    'Payment confirmed as received — "' + soReceivedRemark + '". You can now forward, revert, or reject this application in Processing Decision below.';
+  document.getElementById('so-payment-received-note').style.display = 'flex';
+  unlockActionPanel();
+  var app = SO2_APPS.find(function(a){ return a.ref === currentReviewRef; });
+  if(app){ app.paymentResolved = true; renderInbox(); renderSearchStats(); applySearchFilters(); }
+}
+function onPaymentReasonChange(v){
+  soPaymentReason = v;
+  document.getElementById('so-payment-other-wrap').style.display = v === 'other' ? 'flex' : 'none';
+  updateSavePaymentBtn();
+}
+function onPaymentReasonOtherChange(v){
+  soPaymentReasonOther = v;
+  updateSavePaymentBtn();
+}
+function updateSavePaymentBtn(){
+  var ok = soPaymentReason && (soPaymentReason !== 'other' || soPaymentReasonOther.trim() !== '');
+  document.getElementById('so-save-payment-issue').disabled = !ok;
+}
+function savePaymentIssue(){
+  soPaymentStatus = 'not_received';
+  soPaymentFinalized = true;
+  document.getElementById('so-payment-issue-form').style.display = 'none';
+  document.getElementById('so-payment-final-text').textContent =
+    'Applicant notified — payment issue recorded (' + REASON_LABELS[soPaymentReason] + '). You can still forward, revert, or reject this application in Processing Decision below if needed.';
+  document.getElementById('so-payment-final-note').style.display = 'flex';
+  updateHeaderBadge('Payment Issue Noted', 'background:#FCEEEC;color:#C23B22;border-color:#F2C6BC;');
+  unlockActionPanel();
+}
+function unlockActionPanel(){
+  document.getElementById('so-locked-note').style.display = 'none';
+  document.getElementById('so-action-buttons').style.display = 'flex';
+}
+
+/* Action panel */
+function openForward(){ hideAllActionPanels(); document.getElementById('so-forward-panel').style.display = 'flex'; }
+function openRevert(){ if(flaggedCount() === 0) return; hideAllActionPanels(); document.getElementById('so-revert-note-text').textContent = 'The applicant will only be able to edit the ' + flaggedCount() + ' field(s) you flagged, with your remarks shown alongside each. All other fields stay locked.'; document.getElementById('so-revert-panel').style.display = 'flex'; }
+function openReject(){ hideAllActionPanels(); document.getElementById('so-reject-panel').style.display = 'flex'; }
+function hideAllActionPanels(){
+  document.getElementById('so-action-buttons').style.display = 'none';
+  document.getElementById('so-forward-panel').style.display = 'none';
+  document.getElementById('so-revert-panel').style.display = 'none';
+  document.getElementById('so-reject-panel').style.display = 'none';
+}
+function cancelAction(){
+  document.getElementById('so-forward-panel').style.display = 'none';
+  document.getElementById('so-revert-panel').style.display = 'none';
+  document.getElementById('so-reject-panel').style.display = 'none';
+  document.getElementById('so-action-buttons').style.display = 'flex';
+}
+function onForwardCommentChange(v){ document.getElementById('so-forward-confirm').disabled = v.trim() === ''; }
+function onRejectCommentChange(v){ document.getElementById('so-reject-confirm').disabled = v.trim() === ''; }
+// Each decision writes the outcome back onto the SO2_APPS record (keyed by
+// currentReviewRef) so the inbox/search views reflect it after navigating away, not just
+// the review screen the officer is currently looking at.
+function setCurrentAppStatus(statusKey){
+  var app = SO2_APPS.find(function(a){ return a.ref === currentReviewRef; });
+  if(app) app.statusKey = statusKey;
+  renderInbox();
+  renderSearchStats();
+  applySearchFilters();
+}
+function confirmForward(){
+  hideAllActionPanels();
+  document.getElementById('so-done-forward').style.display = 'flex';
+  updateHeaderBadge('Forwarded to AA', 'background:#E4EFEC;color:#145C4B;border-color:#BFE0D5;');
+  setCurrentAppStatus('forwarded');
+}
+function confirmRevert(){
+  hideAllActionPanels();
+  document.getElementById('so-done-revert-text').textContent = 'Reverted to the applicant — ' + flaggedCount() + ' field(s) marked for correction.';
+  document.getElementById('so-done-revert').style.display = 'flex';
+  updateHeaderBadge('Reverted — Details', 'background:#FFF4E5;color:#8A5A00;border-color:#F0B961;');
+  setCurrentAppStatus('reverted');
+}
+function confirmReject(){
+  hideAllActionPanels();
+  document.getElementById('so-done-reject').style.display = 'flex';
+  updateHeaderBadge('Rejected', 'background:#FCEEEC;color:#C23B22;border-color:#F2C6BC;');
+  setCurrentAppStatus('rejected');
+}
+
+renderAllSections();
+
+function saveDraftForm(){
+  document.getElementById('form-submit-bar').style.display = 'none';
+  document.getElementById('form-draft-saved').style.display = 'flex';
+}
+
+function fv(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function dash(v){ return v ? v : '—'; }
+
+function todayFormatted(){
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var d = new Date();
+  return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+}
+function formatDateInput(iso){
+  if(!iso) return '—';
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var parts = iso.split('-');
+  if(parts.length !== 3) return iso;
+  return parseInt(parts[2],10) + ' ' + months[parseInt(parts[1],10)-1] + ' ' + parts[0];
+}
+
+// Refs already in the queue follow "MPSVC-2026-####" — find the highest number in use
+// and hand out the next one, so a real submission gets its own unique application id.
+function nextRef(){
+  var max = 0;
+  SO2_APPS.forEach(function(a){
+    var m = /MPSVC-2026-(\d+)/.exec(a.ref);
+    if(m) max = Math.max(max, parseInt(m[1],10));
+  });
+  var n = max + 1;
+  return 'MPSVC-2026-' + (n < 1000 ? ('000'+n).slice(-4) : n);
+}
+
+// Reads every field the citizen actually filled on the Application Form and shapes it
+// into the same {id, section, label, value} rows the Scrutiny Officer review screen
+// renders, plus the payment details entered in the Payment section.
+function collectFormData(){
+  var permIsSame = sameAddressChecked;
+  var permAddress, permCity, permState, permDistrict, permPin;
+  if(permIsSame){
+    permAddress = fv('f-resAddress'); permCity = fv('f-resCity');
+    permState = 'Madhya Pradesh'; permDistrict = fv('f-resDistrict'); permPin = fv('f-resPincode');
+  } else {
+    permAddress = fv('f-permAddress'); permCity = fv('f-permCity');
+    permState = permInMPState === 'no' ? fv('f-permStateText') : 'Madhya Pradesh';
+    permDistrict = permInMPState === 'no' ? fv('f-permDistrictText') : fv('f-permDistrictMP');
+    permPin = fv('f-permPincode');
+  }
+
+  var fields = [
+    { id:'firstName', section:'personal', label:'First Name', value:dash(fv('f-firstName')) },
+    { id:'middleName', section:'personal', label:'Middle Name', value:dash(fv('f-middleName')) },
+    { id:'lastName', section:'personal', label:'Last Name', value:dash(fv('f-lastName')) },
+    { id:'fatherName', section:'personal', label:"Father's Name", value:dash(fv('f-fatherName')) },
+    { id:'dob', section:'personal', label:'Date of Birth', value:formatDateInput(fv('f-dob')) },
+    { id:'gender', section:'personal', label:'Gender', value:dash(fv('f-gender')) },
+
+    { id:'resAddress', section:'residential', label:'Address', value:dash(fv('f-resAddress')) },
+    { id:'resCity', section:'residential', label:'City / Town / Village', value:dash(fv('f-resCity')) },
+    { id:'resPost', section:'residential', label:'Post', value:dash(fv('f-resPost')) },
+    { id:'resBlock', section:'residential', label:'Block / Tehsil', value:dash(fv('f-resBlock')) },
+    { id:'resState', section:'residential', label:'State', value:'Madhya Pradesh' },
+    { id:'resDistrict', section:'residential', label:'District', value:dash(fv('f-resDistrict')) },
+    { id:'resPin', section:'residential', label:'Pin Code', value:dash(fv('f-resPincode')) },
+
+    { id:'permAddress', section:'permanent', label:'Address', value:dash(permAddress) },
+    { id:'permCity', section:'permanent', label:'City / Town / Village', value:dash(permCity) },
+    { id:'permState', section:'permanent', label:'State', value:dash(permState) },
+    { id:'permDistrict', section:'permanent', label:'District', value:dash(permDistrict) },
+    { id:'permPin', section:'permanent', label:'Pin Code', value:dash(permPin) },
+
+    { id:'mobile1', section:'contactqual', label:'Mobile No. 1', value:'98XXXXXX10 (Verified)' },
+    { id:'email', section:'contactqual', label:'Email ID', value:'applicant@example.com (Verified)' },
+    { id:'mobile2', section:'contactqual', label:'Mobile No. 2', value:dash(fv('f-mobile2')) },
+    { id:'preferredAddress', section:'contactqual', label:'Preferred Address', value:dash(fv('f-preferredAddress')) },
+    { id:'rollNo', section:'contactqual', label:'Roll No.', value:dash(fv('f-rollNo')) },
+    { id:'enrollNo', section:'contactqual', label:'University Enrollment No.', value:dash(fv('f-enrollNo')) },
+    { id:'college', section:'contactqual', label:'College', value:dash(fv('f-college')) },
+    { id:'passingYear', section:'contactqual', label:'Passing Year', value:dash(fv('f-passingYear')) },
+
+    { id:'certUpload', section:'documents', label:'University / Course Completion Certificate', value:'Not uploaded (prototype)' },
+    { id:'photoUpload', section:'documents', label:'Photo', value:'Not uploaded (prototype)' },
+    { id:'othersUpload', section:'documents', label:'Others', value:'Not uploaded (prototype)' }
+  ];
+  fields.forEach(function(f){ f.flagged = false; f.remark = ''; });
+
+  return {
+    fields: fields,
+    firstName: fv('f-firstName'), lastName: fv('f-lastName'),
+    fatherName: fv('f-fatherName'), email: 'applicant@example.com',
+    address: fv('f-resAddress') + (fv('f-resCity') ? ', ' + fv('f-resCity') : '') + ', MP',
+    payment: {
+      cheque: dash(fv('f-chequeNo')), bank: dash(fv('f-bankName')),
+      date: formatDateInput(fv('f-paymentDate')), amount: '₹ 1,500'
+    }
+  };
+}
+
+var lastSubmittedRef = null;
+
+function submitApplicationForm(){
+  var data = collectFormData();
+  var ref = nextRef();
+  var applicant = (data.firstName || 'New') + ' ' + (data.lastName || 'Applicant');
+
+  SO2_APPS.push({
+    ref: ref, applicant: applicant.trim(), regType:'Provisional', serviceType:'Provisional Registration',
+    submitted: todayFormatted(), statusKey:'new', paymentResolved:false,
+    fatherName: dash(data.fatherName), email: data.email, address: data.address, regNo:'—'
+  });
+  APP_FIELDS[ref] = data.fields;
+  APP_PAYMENT[ref] = data.payment;
+  lastSubmittedRef = ref;
+
+  renderInbox();
+  renderSearchStats();
+  applySearchFilters();
+
+  document.getElementById('submitted-ref').textContent = ref;
+  document.getElementById('form-submit-bar').style.display = 'none';
+  document.getElementById('form-draft-saved').style.display = 'none';
+  document.getElementById('form-submitted').style.display = 'flex';
+}
+</script>
+
+</body>
+</html>

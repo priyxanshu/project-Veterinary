@@ -168,6 +168,7 @@ const MOCK_RECORD = {
   dispatchDate: "2018-04-15",
   trackingNumber: "EM482910335IN",
   existingRegValidTill: "2027-03-31",
+  bankName: "State Bank of India — Napier Town Branch, Jabalpur",
 };
 
 // A citizen who has already completed Provisional Registration — used to demo the
@@ -649,6 +650,11 @@ export default function MPSVCPrototype() {
   const [sigFile, setSigFile] = useState("");
   const [documents, setDocuments] = useState({});
   const [tncAccepted, setTncAccepted] = useState(false);
+  // What an existing registrant says has changed since their last registration — drives
+  // which sections expand inline in ScreenRenewalChoices.
+  const [renewalChoices, setRenewalChoices] = useState({
+    residentialAddress: false, professionalAddress: false, photo: false, otherDocument: false, qualification: false,
+  });
   const [paymentMethod, setPaymentMethod] = useState("online");
   const [challanNumber, setChallanNumber] = useState("");
   const [applicationId, setApplicationId] = useState("");
@@ -693,6 +699,7 @@ export default function MPSVCPrototype() {
     setCertViewerTab("digital"); setCertDupCertId(null); setCertSelectedAppId(null);
     setServiceType(null); setFormData(EMPTY_FORM); setPhotoFile(""); setSigFile("");
     setDocuments({}); setTncAccepted(false); setPaymentMethod(null); setChallanNumber(""); setApplicationId("");
+    setRenewalChoices({ residentialAddress: false, professionalAddress: false, photo: false, otherDocument: false, qualification: false });
     setRegistrationNo(""); setAppStatus(null); setStatusHistory([]); setSentBackRemarks("");
     setRemarksDraft(""); setTrackingNumber(""); setDispatchDate(""); setCertificateIssueDate("");
     setCertTab("digital");
@@ -1297,6 +1304,7 @@ export default function MPSVCPrototype() {
                 category: MOCK_RECORD.category, address: MOCK_RECORD.address, degree: MOCK_RECORD.degree,
                 university: MOCK_RECORD.university, yearOfPassing: MOCK_RECORD.yearOfPassing,
                 existingRegNo: MOCK_RECORD.regNo, existingRegValidTill: MOCK_RECORD.existingRegValidTill,
+                bankName: MOCK_RECORD.bankName,
               }));
               setLoggedIn(true);
               setScreen("dashboard");
@@ -2015,6 +2023,254 @@ export default function MPSVCPrototype() {
             <div className="form-actions">
               <button className="btn btn-outline" onClick={() => backFromForm()}><ChevronLeft size={16} /> Back</button>
               <button className="btn btn-primary" onClick={() => setScreen("doc-upload")}>Continue to Documents <ChevronRight size={16} /></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Renewal is a returning registrant touching up a record the office already has on
+  // file, not a fresh application — so instead of dumping every field from ScreenAppForm
+  // on them again, we ask what's actually changed and only show those sections.
+  function ScreenRenewalChoices() {
+    const set = (k, v) => setFormData(f => ({ ...f, [k]: v }));
+    const toggle = (key) => setRenewalChoices(c => ({ ...c, [key]: !c[key] }));
+    const anySelected = Object.values(renewalChoices).some(Boolean);
+
+    // Picking a Pincode auto-populates the matching Post Office (Madhya Pradesh only —
+    // outside MP both fields are open text, so there's nothing to look up).
+    function handlePincodeChange(prefix, pincode) {
+      const match = MP_PINCODE_POST_OFFICES.find(p => p.pincode === pincode);
+      setFormData(f => ({
+        ...f,
+        [`${prefix}Pincode`]: pincode,
+        [`${prefix}PostOffice`]: match ? match.postOffice : f[`${prefix}PostOffice`],
+      }));
+    }
+
+    const offlineDetailsComplete = formData.chequeDDNo && formData.bankName && formData.paymentDate;
+
+    function handleSubmit() {
+      if (paymentMethod !== "offline" || !offlineDetailsComplete) return;
+      // Demo hand-off: the citizen portal and the back-office are separate, unconnected
+      // prototypes, so this is a cosmetic redirect rather than a real queue hand-off.
+      window.location.href = import.meta.env.BASE_URL + "back-office.html";
+    }
+
+    const choices = [
+      {
+        key: "residentialAddress", icon: <Home size={20} />, title: "Residential Address",
+        desc: "Your home address has changed since your last registration.",
+        fields: (
+          <>
+            <div className="two-col-grid">
+              <Field label="Area Type">
+                <select className="form-input" value={formData.resAreaType} onChange={e => set("resAreaType", e.target.value)}>
+                  <option value="">Select</option>
+                  {AREA_TYPES.map(a => <option key={a}>{a}</option>)}
+                </select>
+              </Field>
+              <Field label="State"><input className="form-input" value={formData.resState} readOnly /></Field>
+              <Field label="District">
+                <LocationField isMP options={MP_DISTRICTS} value={formData.resDistrict} onChange={e => set("resDistrict", e.target.value)} />
+              </Field>
+              {formData.resAreaType === "Rural" && (
+                <>
+                  <Field label="Block"><LocationField isMP options={MP_BLOCKS} value={formData.resBlock} onChange={e => set("resBlock", e.target.value)} /></Field>
+                  <Field label="Panchayat"><LocationField isMP options={MP_PANCHAYATS} value={formData.resPanchayat} onChange={e => set("resPanchayat", e.target.value)} /></Field>
+                  <Field label="Gram"><LocationField isMP options={MP_GRAMS} value={formData.resGram} onChange={e => set("resGram", e.target.value)} /></Field>
+                </>
+              )}
+              {formData.resAreaType === "Urban" && (
+                <>
+                  <Field label="City"><LocationField isMP options={MP_DISTRICTS} value={formData.resCity} onChange={e => set("resCity", e.target.value)} /></Field>
+                  <Field label="Ward"><LocationField isMP options={MP_WARDS} value={formData.resWard} onChange={e => set("resWard", e.target.value)} /></Field>
+                </>
+              )}
+              <Field label="Pin Code">
+                <LocationField isMP options={MP_PINCODES} value={formData.resPincode} onChange={e => handlePincodeChange("res", e.target.value.replace(/\D/g, ""))} />
+              </Field>
+              <Field label="Post Office" hint="Auto-filled from Pin Code — change it if a different post office applies.">
+                <LocationField isMP options={MP_POST_OFFICES} value={formData.resPostOffice} onChange={e => set("resPostOffice", e.target.value)} />
+              </Field>
+            </div>
+            <Field label="Complete Address">
+              <textarea className="form-input" rows={2} value={formData.resAddress} onChange={e => set("resAddress", e.target.value)} />
+            </Field>
+          </>
+        ),
+      },
+      {
+        key: "professionalAddress", icon: <Building2 size={20} />, title: "Professional Address",
+        desc: "Your place of practice / employment address has changed.",
+        fields: (
+          <>
+            <div className="two-col-grid">
+              <Field label="Area Type">
+                <select className="form-input" value={formData.proAreaType} onChange={e => set("proAreaType", e.target.value)}>
+                  <option value="">Select</option>
+                  {AREA_TYPES.map(a => <option key={a}>{a}</option>)}
+                </select>
+              </Field>
+              <Field label="State"><input className="form-input" value={formData.proState} readOnly /></Field>
+              <Field label="District"><LocationField isMP options={MP_DISTRICTS} value={formData.proDistrict} onChange={e => set("proDistrict", e.target.value)} /></Field>
+              {formData.proAreaType === "Rural" && (
+                <>
+                  <Field label="Block"><LocationField isMP options={MP_BLOCKS} value={formData.proBlock} onChange={e => set("proBlock", e.target.value)} /></Field>
+                  <Field label="Panchayat"><LocationField isMP options={MP_PANCHAYATS} value={formData.proPanchayat} onChange={e => set("proPanchayat", e.target.value)} /></Field>
+                  <Field label="Gram"><LocationField isMP options={MP_GRAMS} value={formData.proGram} onChange={e => set("proGram", e.target.value)} /></Field>
+                </>
+              )}
+              {formData.proAreaType === "Urban" && (
+                <>
+                  <Field label="City"><LocationField isMP options={MP_DISTRICTS} value={formData.proCity} onChange={e => set("proCity", e.target.value)} /></Field>
+                  <Field label="Ward"><LocationField isMP options={MP_WARDS} value={formData.proWard} onChange={e => set("proWard", e.target.value)} /></Field>
+                </>
+              )}
+              <Field label="Pin Code">
+                <LocationField isMP options={MP_PINCODES} value={formData.proPincode} onChange={e => handlePincodeChange("pro", e.target.value.replace(/\D/g, ""))} />
+              </Field>
+              <Field label="Post Office" hint="Auto-filled from Pin Code — change it if a different post office applies.">
+                <LocationField isMP options={MP_POST_OFFICES} value={formData.proPostOffice} onChange={e => set("proPostOffice", e.target.value)} />
+              </Field>
+            </div>
+            <Field label="Complete Address">
+              <textarea className="form-input" rows={2} value={formData.proAddress} onChange={e => set("proAddress", e.target.value)} />
+            </Field>
+          </>
+        ),
+      },
+      {
+        key: "photo", icon: <Camera size={20} />, title: "Photo",
+        desc: "Upload a new photograph for your renewed certificate.",
+        fields: (
+          <div className="two-col-grid">
+            <UploadBox icon={<Camera size={18} />} label="Photograph" fileName={photoFile} onPick={f => setPhotoFile(f)} format="photo" hint={PHOTO_HINT} />
+          </div>
+        ),
+      },
+      {
+        key: "otherDocument", icon: <FileText size={20} />, title: "Attach Other Document",
+        desc: "Attach any additional supporting document for this renewal.",
+        fields: (
+          <div className="two-col-grid">
+            <UploadBox
+              icon={<FileText size={18} />} label="Other Document"
+              fileName={documents.other?.fileName}
+              onPick={name => setDocuments(d => ({ ...d, other: { uploaded: true, fileName: name } }))}
+              format="pdf"
+            />
+          </div>
+        ),
+      },
+      {
+        key: "qualification", icon: <Award size={20} />, title: "Add Other Qualification",
+        desc: "Add a further qualification earned since your last registration.",
+        fields: (
+          <div className="two-col-grid">
+            <Field label="Degree / Qualification">
+              <select className="form-input" value={formData.addlQualDegree} onChange={e => set("addlQualDegree", e.target.value)}>
+                <option value="">Select</option>
+                <option>M.V.Sc.</option><option>Ph.D.</option><option>Post Graduate Diploma</option><option>Other</option>
+              </select>
+            </Field>
+            <Field label="Specialization / Subject"><input className="form-input" value={formData.addlQualSpecialization} onChange={e => set("addlQualSpecialization", e.target.value)} /></Field>
+            <Field label="University"><input className="form-input" value={formData.addlQualUniversity} onChange={e => set("addlQualUniversity", e.target.value)} /></Field>
+            <Field label="College / Institute"><input className="form-input" value={formData.addlQualCollege} onChange={e => set("addlQualCollege", e.target.value)} /></Field>
+            <Field label="Year of Passing"><input className="form-input" value={formData.addlQualYear} onChange={e => set("addlQualYear", e.target.value)} /></Field>
+          </div>
+        ),
+      },
+    ];
+
+    return (
+      <div className="page-wide">
+        <BackLink onClick={goDashboard} />
+        <div className="card">
+          <div className="card-header">Apply for Renewal</div>
+          <div className="card-body">
+            <NoteBanner>
+              Your existing registration details are carried forward automatically. Tell us only what's changed since
+              your last registration — click a card below to open and fill in just that section.
+            </NoteBanner>
+
+            <div className="section-title">What would you like to update?</div>
+            <div className="radio-card-group">
+              {choices.map(c => (
+                <div key={c.key}>
+                  <div
+                    className={`radio-card ${renewalChoices[c.key] ? "selected" : ""}`}
+                    role="button" tabIndex={0}
+                    onClick={() => toggle(c.key)}
+                  >
+                    {c.icon}
+                    <div style={{ flexGrow: 1 }}>
+                      <div className="radio-card-title">{c.title}</div>
+                      <div className="radio-card-desc">{c.desc}</div>
+                    </div>
+                    {renewalChoices[c.key] && <Check size={18} />}
+                  </div>
+                  {renewalChoices[c.key] && (
+                    <div style={{ padding: "14px 16px", marginTop: -8, marginBottom: 8, border: "1px solid #e2e8f0", borderTop: "none", borderRadius: "0 0 10px 10px" }}>
+                      {c.fields}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            {!anySelected && (
+              <p className="form-hint">Nothing selected — if none of your details have changed, continue to submit your renewal as-is.</p>
+            )}
+
+            <div className="section-title">How would you like to pay?</div>
+            <div className="radio-card-group">
+              <div className="radio-card disabled" title="Online payment is temporarily unavailable for renewals.">
+                <CreditCard size={20} />
+                <div>
+                  <div className="radio-card-title">Online Payment</div>
+                  <div className="radio-card-desc">Pay instantly via UPI / Card / Net Banking.</div>
+                </div>
+                <span className="radio-card-badge">Unavailable</span>
+              </div>
+              <div
+                className={`radio-card ${paymentMethod === "offline" ? "selected" : ""}`}
+                role="button" tabIndex={0}
+                onClick={() => setPaymentMethod("offline")}
+              >
+                <Landmark size={20} />
+                <div>
+                  <div className="radio-card-title">Offline Payment</div>
+                  <div className="radio-card-desc">Generate a Challan and pay at a designated bank / kiosk.</div>
+                </div>
+              </div>
+            </div>
+
+            {paymentMethod === "offline" && (
+              <>
+                <div className="section-title">Payment Details</div>
+                <div className="two-col-grid">
+                  <Field label="Challan / Cheque / DD No">
+                    <input className="form-input" value={formData.chequeDDNo} onChange={e => set("chequeDDNo", e.target.value)} placeholder="Enter after paying at the bank / kiosk" />
+                  </Field>
+                  <Field label="Bank Name" hint="Fetched from your registration record — change it if you're paying through a different bank.">
+                    <input className="form-input" value={formData.bankName} onChange={e => set("bankName", e.target.value)} />
+                  </Field>
+                  <Field label="Payment Date">
+                    <input className="form-input" type="date" value={formData.paymentDate} onChange={e => set("paymentDate", e.target.value)} />
+                  </Field>
+                </div>
+              </>
+            )}
+
+            <NoteBanner tone="amber">
+              After you submit, you'll get a Challan/Reference Number to pay the renewal fee offline at a designated
+              bank / kiosk. The office processes your renewal once that payment is confirmed.
+            </NoteBanner>
+
+            <div className="form-actions">
+              <button className="btn btn-outline" onClick={goDashboard}>Cancel</button>
+              <button className="btn btn-primary" disabled={!offlineDetailsComplete} onClick={handleSubmit}>Submit Application &amp; Pay Offline <ChevronRight size={16} /></button>
             </div>
           </div>
         </div>
@@ -2747,7 +3003,12 @@ export default function MPSVCPrototype() {
                   <button className="btn btn-outline btn-sm" onClick={() => { setCertViewerId(current.id); setCertViewerTab("digital"); }}>View Certificate</button>
                   <button className="btn btn-outline btn-sm" onClick={() => setScreen("existing-reg-application-details")}>View Application Details</button>
                   <button className="btn btn-outline btn-sm" onClick={() => openCertDuplicate(current.id)}>Apply for Duplicate</button>
-                  <button className="btn btn-primary btn-sm" onClick={() => { setServiceType("renewal"); setScreen("app-form"); }}>Apply for Renewal</button>
+                  <button className="btn btn-primary btn-sm" onClick={() => {
+                    setServiceType("renewal");
+                    setRenewalChoices({ residentialAddress: false, professionalAddress: false, photo: false, otherDocument: false, qualification: false });
+                    setPaymentMethod("offline");
+                    setScreen("renewal-choices");
+                  }}>Apply for Renewal</button>
                   <button className="btn btn-outline btn-sm" onClick={() => { setServiceType("add-qualification"); setScreen("app-form"); }}>Addition of Qualification</button>
                   <button className="btn btn-outline-danger btn-sm" onClick={() => { setServiceType("transfer-out"); setScreen("app-form"); }}>Transfer Out of Madhya Pradesh</button>
                 </div>
@@ -3964,6 +4225,7 @@ export default function MPSVCPrototype() {
       case "forgot-regno-result": return <ScreenForgotRegnoResult />;
       case "contact-admin": return <ScreenContactAdmin />;
       case "service-select": return <ScreenServiceSelect options={availableServices()} />;
+      case "renewal-choices": return <ScreenRenewalChoices />;
       case "app-form": return <ScreenAppForm />;
       case "doc-upload": return <ScreenDocUpload />;
       case "review": return <ScreenReview />;
@@ -4309,6 +4571,8 @@ const CSS = `
 .radio-card-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
 .radio-card { display: flex; align-items: center; gap: 12px; border: 1.5px solid var(--mp-gray-200); border-radius: var(--radius); padding: 14px; cursor: pointer; color: var(--mp-blue-700); }
 .radio-card.selected { border-color: var(--mp-blue-700); background: var(--mp-blue-50); }
+.radio-card.disabled { cursor: not-allowed; opacity: 0.55; background: var(--mp-gray-50); }
+.radio-card-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mp-gray-600); background: var(--mp-gray-100); border-radius: 3px; padding: 2px 7px; margin-left: auto; }
 .radio-card-title { font-weight: 700; font-size: 13.5px; color: var(--mp-gray-900); }
 .radio-card-desc { font-size: 12px; color: var(--mp-gray-600); margin-top: 2px; }
 .demo-btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
